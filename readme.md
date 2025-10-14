@@ -1,9 +1,10 @@
-# \<Project Name\> Scrum Team
+# Photo App Scrum Team
 ## Product Owner
-\<Team Member Name\>
+G15: Brown University
 ## Scrum Master
 \<Team Member Name\>
 ## Developers
 - \<Team Member Name\>
 - \<Team Member Name\>
 - \<Team Member Name\>
+- Kushal Acharya
