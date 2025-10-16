@@ -4,7 +4,7 @@ G15: Brown University
 ## Scrum Master
 \<Team Member Name\>
 ## Developers
-- \<Team Member Name\>
+- Gokul Nair
 - \<Team Member Name\>
 - \<Team Member Name\>
 - Kushal Acharya
