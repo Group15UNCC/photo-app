@@ -6,5 +6,5 @@ G15: Brown University
 ## Developers
 - Gokul Nair
 - Aaryan Vemunoori
-- \<Team Member Name\>
+- Aakash Shah 
 - Kushal Acharya
