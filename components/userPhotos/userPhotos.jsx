@@ -104,14 +104,26 @@ class UserPhotos extends React.Component {
                 Uploaded on: {new Date(photo.date_time).toLocaleString()}
               </Typography>
 
-              {/* Optional: render comments if available */}
+              {/* Render comments if available */}
               {photo.comments && photo.comments.length > 0 && (
                 <div className="photo-comments">
-                  <Typography variant="subtitle2">Comments:</Typography>
+                  <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                    Comments:
+                  </Typography>
                   {photo.comments.map((comment) => (
-                    <Typography key={comment._id} variant="body2">
-                      <strong>{comment.user?.first_name}</strong>: {comment.comment}
-                    </Typography>
+                    <div key={comment._id} className="comment-item">
+                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.75rem' }}>
+                        {new Date(comment.date_time).toLocaleString()}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 0.5 }}>
+                        <a 
+                          href={`#/users/${comment.user?._id}`}
+                          style={{ textDecoration: 'none', color: 'primary.main' }}
+                        >
+                          {comment.user?.first_name} {comment.user?.last_name}
+                        </a>: {comment.comment}
+                      </Typography>
+                    </div>
                   ))}
                 </div>
               )}
