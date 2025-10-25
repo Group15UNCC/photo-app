@@ -1,0 +1,15 @@
+.userPhotos-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.userPhotos-card {
+  max-width: 600px;
+  margin-bottom: 16px;
+}
+
+.userPhotos-image {
+  width: 100%;
+  border-radius: 8px;
+}
