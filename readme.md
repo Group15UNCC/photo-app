@@ -2,7 +2,7 @@
 ## Product Owner
 G15: Brown University
 ## Scrum Master
-\<Team Member Name\>
+Arham H Inamdar
 ## Developers
 - Gokul Nair
 - Aaryan Vemunoori
