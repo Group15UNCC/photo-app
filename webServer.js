@@ -44,9 +44,6 @@ const User = require("./schema/user.js");
 const Photo = require("./schema/photo.js");
 const SchemaInfo = require("./schema/schemaInfo.js");
 
-// XXX - Your submission should work without this line. Comment out or delete
-// this line for tests and before submission!
-const models = require("./modelData/photoApp.js").models;
 mongoose.set("strictQuery", false);
 mongoose.connect("mongodb://127.0.0.1/project6", {
   useNewUrlParser: true,
@@ -83,12 +80,12 @@ app.get("/test/:p1", function (request, response) {
   if (param === "info") {
     // Fetch the SchemaInfo. There should only one of them. The query of {} will
     // match it.
-    SchemaInfo.find({}, function (err, info) {
-      if (err) {
+    SchemaInfo.find({}, function (error, info) {
+      if (error) {
         // Query returned an error. We pass it back to the browser with an
         // Internal Service Error (500) error code.
-        console.error("Error in /user/info:", err);
-        response.status(500).send(JSON.stringify(err));
+        console.error("Error in /user/info:", error);
+        response.status(500).send(JSON.stringify(error));
         return;
       }
       if (info.length === 0) {
@@ -115,14 +112,14 @@ app.get("/test/:p1", function (request, response) {
     async.each(
       collections,
       function (col, done_callback) {
-        col.collection.countDocuments({}, function (err, count) {
+        col.collection.countDocuments({}, function (error, count) {
           col.count = count;
-          done_callback(err);
+          done_callback(error);
         });
       },
-      function (err) {
-        if (err) {
-          response.status(500).send(JSON.stringify(err));
+      function (error) {
+        if (error) {
+          response.status(500).send(JSON.stringify(error));
         } else {
           const obj = {};
           for (let i = 0; i < collections.length; i++) {
@@ -142,36 +139,58 @@ app.get("/test/:p1", function (request, response) {
 /**
  * URL /user/list - Returns all the User objects.
  */
-app.get("/user/list", function (request, response) {
-  response.status(200).send(models.userListModel());
+app.get("/user/list", async (request, response) => {
+  try{
+    const users = await User.find({}, '_id first_name last_name');
+    response.status(200).send(users);
+  }
+  catch(error){
+    console.error("Error fetching user list:", error);
+    response.status(500).send({ error: "Database error fetching user list"});
+  }
 });
 
 /**
  * URL /user/:id - Returns the information for User (id).
  */
-app.get("/user/:id", function (request, response) {
-  const id = request.params.id;
-  const user = models.userModel(id);
-  if (user === null) {
-    console.log("User with _id:" + id + " not found.");
-    response.status(400).send("Not found");
-    return;
+app.get("/user/:id", async (request, response) => {
+  try{
+    const user = await User.findById(request.params.id, '_id first_name last_name location description occupation');
+    if (!user){
+      console.log("User with _id:", request.params.id, "not found.");
+      return response.status(400).send({error:"User not found"});
+    }
+    response.status(200).send(user);
+  } catch (error){
+    console.error("Error fetching user:", error);
+    response.status(400).send({ error: "Database error fetching user list"});
   }
-  response.status(200).send(user);
+  
 });
 
 /**
  * URL /photosOfUser/:id - Returns the Photos for User (id).
  */
-app.get("/photosOfUser/:id", function (request, response) {
-  const id = request.params.id;
-  const photos = models.photoOfUserModel(id);
-  if (photos.length === 0) {
-    console.log("Photos for user with _id:" + id + " not found.");
-    response.status(400).send("Not found");
-    return;
+app.get("/photosOfUser/:id", async (request, response) => {
+  try{
+    const user = await User.findById(request.params.id);
+    if (!user){
+      console.log("User with _id: ", request.params.id, "not found." );
+      return response.status(400).send({error: "User not found"});
+    }
+    const photos = await Photo.find({ user_id: request.params.id}).lean();
+    for (const p of photos){
+      for (const c of p.comments){
+        const com = await User.findById(c.user_id, "_id first_name last_name");
+        c.user = com ? com:null;
+      }
+    }
+    response.status(200).send(photos);
+  } catch(error){
+    console.error("Error fetching photos for user: ", error);
+    response.status(400).send({error: "Invalid user ID"});
   }
-  response.status(200).send(photos);
+  
 });
 
 const server = app.listen(3000, function () {
