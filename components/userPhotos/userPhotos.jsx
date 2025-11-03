@@ -6,7 +6,7 @@ import {
   CardContent,
   CardMedia
 } from '@mui/material';
-import fetchModel from '../../lib/fetchModelData';
+import axios from 'axios';
 import './userPhotos.css';
 
 /**
@@ -37,7 +37,7 @@ class UserPhotos extends React.Component {
     const userId = this.props.match.params.userId;
     this.setState({ loading: true, error: null });
 
-    fetchModel(`/photosOfUser/${userId}`)
+    axios.get(`/photosOfUser/${userId}`)
       .then((response) => {
         this.setState({
           photos: response.data,
@@ -45,8 +45,11 @@ class UserPhotos extends React.Component {
         });
       })
       .catch((err) => {
+        const errorMessage = err.response
+          ? `Failed to load photos: ${err.response.statusText || err.response.status}`
+          : `Failed to load photos: ${err.message}`;
         this.setState({
-          error: `Failed to load photos: ${err.statusText}`,
+          error: errorMessage,
           loading: false
         });
       });
@@ -116,12 +119,18 @@ class UserPhotos extends React.Component {
                         {new Date(comment.date_time).toLocaleString()}
                       </Typography>
                       <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        <a 
-                          href={`#/users/${comment.user?._id}`}
-                          style={{ textDecoration: 'none', color: 'primary.main' }}
-                        >
-                          {comment.user?.first_name} {comment.user?.last_name}
-                        </a>: {comment.comment}
+                        {comment.user ? (
+                          <>
+                            <a 
+                              href={`#/users/${comment.user._id}`}
+                              style={{ textDecoration: 'none', color: 'primary.main' }}
+                            >
+                              {comment.user.first_name} {comment.user.last_name}
+                            </a>: {comment.comment}
+                          </>
+                        ) : (
+                          <span>Unknown User: {comment.comment}</span>
+                        )}
                       </Typography>
                     </div>
                   ))}
