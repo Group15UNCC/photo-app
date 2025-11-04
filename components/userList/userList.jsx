@@ -7,7 +7,7 @@ import {
   ListItemText,
   Typography,
 } from '@mui/material';
-import fetchModel from '../../lib/fetchModelData';
+import axios from 'axios';
 import './userList.css';
 
 class UserList extends React.Component {
@@ -21,14 +21,17 @@ class UserList extends React.Component {
   }
 
   componentDidMount() {
-    // Fetch users from the backend
-    fetchModel('/user/list')
+    axios
+      .get('/user/list')
       .then((response) => {
         this.setState({ users: response.data, loading: false });
       })
       .catch((err) => {
         console.error('Error fetching user list:', err);
-        this.setState({ error: err.statusText, loading: false });
+        this.setState({
+          error: err.response ? err.response.statusText : 'Network error',
+          loading: false,
+        });
       });
   }
 

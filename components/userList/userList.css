@@ -1,0 +1,12 @@
+.user-list-container {
+  padding: 16px;
+}
+
+.user-list-item {
+  transition: background-color 0.2s ease;
+}
+
+.user-list-item:hover {
+  background-color: #f5f5f5;
+}
+
