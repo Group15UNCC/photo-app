@@ -160,10 +160,10 @@ app.get("/user/:id", async (request, response) => {
       console.log("User with _id:", request.params.id, "not found.");
       return response.status(400).send({error:"User not found"});
     }
-    response.status(200).send(user);
+    return response.status(200).send(user);
   } catch (error){
     console.error("Error fetching user:", error);
-    response.status(400).send({ error: "Database error fetching user list"});
+    return response.status(400).send({ error: "Database error fetching user list"});
   }
   
 });
@@ -172,26 +172,40 @@ app.get("/user/:id", async (request, response) => {
  * URL /photosOfUser/:id - Returns the Photos for User (id).
  */
 app.get("/photosOfUser/:id", async (request, response) => {
-  try{
+  try {
     const user = await User.findById(request.params.id);
-    if (!user){
-      console.log("User with _id: ", request.params.id, "not found." );
-      return response.status(400).send({error: "User not found"});
+    if (!user) {
+      console.log("User with _id:", request.params.id, "not found.");
+      return response.status(400).send({ error: "User not found" });
     }
-    const photos = await Photo.find({ user_id: request.params.id}).lean();
-    for (const p of photos){
-      for (const c of p.comments){
-        const com = await User.findById(c.user_id, "_id first_name last_name");
-        c.user = com ? com:null;
-      }
-    }
-    response.status(200).send(photos);
-  } catch(error){
-    console.error("Error fetching photos for user: ", error);
-    response.status(400).send({error: "Invalid user ID"});
+
+    const photos = await Photo.find({ user_id: request.params.id })
+      .select("-__v")
+      .lean();
+
+    await Promise.all(
+      photos.map(async (p) => {
+        p.comments = await Promise.all(
+          p.comments.map(async (c) => {
+            const com = await User.findById(c.user_id, "_id first_name last_name");
+            return {
+              ...c,
+              user: com || null,
+              user_id: undefined, 
+            };
+          })
+        );
+      })
+    );
+
+    return response.status(200).send(photos);
+  } catch (error) {
+    console.error("Error fetching photos for user:", error);
+    return response.status(400).send({ error: "Invalid user ID" });
   }
-  
 });
+
+
 
 const server = app.listen(3000, function () {
   const port = server.address().port;
