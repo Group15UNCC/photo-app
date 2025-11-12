@@ -53,6 +53,7 @@ mongoose.connect("mongodb://127.0.0.1/project6", {
 // We have the express static module
 // (http://expressjs.com/en/starter/static-files.html) do all the work for us.
 app.use(express.static(__dirname));
+app.use(express.json());
 
 app.get("/", function (request, response) {
   response.send("Simple web server of files from " + __dirname);
@@ -202,6 +203,76 @@ app.get("/photosOfUser/:id", async (request, response) => {
   } catch (error) {
     console.error("Error fetching photos for user:", error);
     return response.status(400).send({ error: "Invalid user ID" });
+  }
+});
+
+app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
+  const photoId = request.params.photo_id;
+  const commentText =
+    request.body && typeof request.body.comment === "string"
+      ? request.body.comment.trim()
+      : "";
+
+  if (!commentText) {
+    response.status(400).send({ error: "Comment text must not be empty." });
+    return;
+  }
+
+  const sessionUserId =
+    request.session &&
+    (request.session.user_id ||
+      (request.session.user && request.session.user._id));
+  const requestUserId =
+    request.body && typeof request.body.user_id === "string"
+      ? request.body.user_id
+      : null;
+  const userId = sessionUserId || requestUserId;
+
+  if (!userId) {
+    response.status(401).send({ error: "User must be logged in to comment." });
+    return;
+  }
+
+  try {
+    const [photo, user] = await Promise.all([
+      Photo.findById(photoId),
+      User.findById(userId, "_id first_name last_name"),
+    ]);
+
+    if (!photo) {
+      response.status(400).send({ error: "Photo not found." });
+      return;
+    }
+
+    if (!user) {
+      response.status(400).send({ error: "User not found." });
+      return;
+    }
+
+    const newComment = {
+      comment: commentText,
+      date_time: new Date(),
+      user_id: user._id,
+    };
+
+    photo.comments.push(newComment);
+    await photo.save();
+
+    const savedComment = photo.comments[photo.comments.length - 1];
+
+    response.status(200).send({
+      _id: savedComment._id,
+      comment: savedComment.comment,
+      date_time: savedComment.date_time,
+      user: {
+        _id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding comment to photo:", error);
+    response.status(500).send({ error: "Failed to add comment to photo." });
   }
 });
 

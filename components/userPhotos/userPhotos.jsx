@@ -4,7 +4,11 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  CardMedia
+  CardMedia,
+  CardActions,
+  TextField,
+  Button,
+  Alert
 } from '@mui/material';
 import axios from 'axios';
 import './userPhotos.css';
@@ -18,7 +22,11 @@ class UserPhotos extends React.Component {
     this.state = {
       photos: null,
       loading: true,
-      error: null
+      error: null,
+      commentTexts: {},
+      submitErrors: {},
+      submitting: {},
+      successMessage: ''
     };
   }
 
@@ -35,7 +43,12 @@ class UserPhotos extends React.Component {
 
   loadUserPhotos() {
     const userId = this.props.match.params.userId;
-    this.setState({ loading: true, error: null });
+    this.setState({
+      loading: true,
+      error: null,
+      successMessage: '',
+      submitErrors: {}
+    });
 
     axios.get(`/photosOfUser/${userId}`)
       .then((response) => {
@@ -55,8 +68,113 @@ class UserPhotos extends React.Component {
       });
   }
 
+  handleCommentTextChange = (photoId, value) => {
+    this.setState((prevState) => ({
+      commentTexts: {
+        ...prevState.commentTexts,
+        [photoId]: value
+      },
+      submitErrors: {
+        ...prevState.submitErrors,
+        [photoId]: ''
+      },
+      successMessage: ''
+    }));
+  };
+
+  handleCommentSubmit = (photoId) => {
+    const commentText = (this.state.commentTexts[photoId] || '').trim();
+
+    if (!commentText) {
+      this.setState((prevState) => ({
+        submitErrors: {
+          ...prevState.submitErrors,
+          [photoId]: 'Please enter a comment before submitting.'
+        }
+      }));
+      return;
+    }
+
+    const { currentUser } = this.props;
+    const userId = currentUser ? currentUser._id : null;
+
+    if (!userId) {
+      this.setState((prevState) => ({
+        submitErrors: {
+          ...prevState.submitErrors,
+          [photoId]: 'You must be logged in to comment.'
+        }
+      }));
+      return;
+    }
+
+    this.setState((prevState) => ({
+      submitting: {
+        ...prevState.submitting,
+        [photoId]: true
+      },
+      submitErrors: {
+        ...prevState.submitErrors,
+        [photoId]: ''
+      },
+      successMessage: ''
+    }));
+
+    axios.post(`/commentsOfPhoto/${photoId}`, {
+      comment: commentText,
+      user_id: userId
+    })
+      .then((response) => {
+        this.setState((prevState) => {
+          const updatedPhotos = prevState.photos ? prevState.photos.map((photo) => {
+            if (photo._id !== photoId) {
+              return photo;
+            }
+            return {
+              ...photo,
+              comments: [
+                ...(photo.comments || []),
+                {
+                  ...response.data
+                }
+              ]
+            };
+          }) : prevState.photos;
+
+          return {
+            photos: updatedPhotos,
+            commentTexts: {
+              ...prevState.commentTexts,
+              [photoId]: ''
+            },
+            submitting: {
+              ...prevState.submitting,
+              [photoId]: false
+            },
+            successMessage: 'Comment added successfully!'
+          };
+        });
+      })
+      .catch((err) => {
+        const errorMessage = err.response && err.response.data && err.response.data.error
+          ? err.response.data.error
+          : 'Failed to add comment.';
+
+        this.setState((prevState) => ({
+          submitErrors: {
+            ...prevState.submitErrors,
+            [photoId]: errorMessage
+          },
+          submitting: {
+            ...prevState.submitting,
+            [photoId]: false
+          }
+        }));
+      });
+  };
+
   render() {
-    const { photos, loading, error } = this.state;
+    const { photos, loading, error, commentTexts, submitErrors, submitting, successMessage } = this.state;
     const userId = this.props.match.params.userId;
 
     if (loading) {
@@ -88,6 +206,11 @@ class UserPhotos extends React.Component {
 
     return (
       <div className="userPhotos-container">
+        {successMessage ? (
+          <Alert severity="success" className="comment-success-alert">
+            {successMessage}
+          </Alert>
+        ) : null}
         <Typography variant="h6" gutterBottom>
           Photos of User {userId}
         </Typography>
@@ -137,6 +260,30 @@ class UserPhotos extends React.Component {
                 </div>
               )}
             </CardContent>
+            <CardActions className="comment-form">
+              <TextField
+                label="Add a comment"
+                variant="outlined"
+                size="small"
+                fullWidth
+                value={commentTexts[photo._id] || ''}
+                onChange={(event) => this.handleCommentTextChange(photo._id, event.target.value)}
+                inputProps={{ maxLength: 500 }}
+              />
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => this.handleCommentSubmit(photo._id)}
+                disabled={Boolean(submitting[photo._id])}
+              >
+                {submitting[photo._id] ? 'Posting...' : 'Post'}
+              </Button>
+            </CardActions>
+            {submitErrors[photo._id] ? (
+              <Typography color="error" variant="body2" sx={{ mt: 1, px: 2 }}>
+                {submitErrors[photo._id]}
+              </Typography>
+            ) : null}
           </Card>
         ))}
       </div>
