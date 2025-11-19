@@ -11,19 +11,17 @@ class TopBar extends React.Component {
         this.state = {
             app_info: undefined
         };
-        this.uploadInput = null;
+        this.uploadInput = React.createRef();
     }
 
     componentDidMount() {
         this.handleAppInfoChange();
     }
 
-    handleAppInfoChange(){
-        const app_info = this.state.app_info;
-        if (app_info === undefined){
+    handleAppInfoChange() {
+        if (!this.state.app_info) {
             axios.get("/test/info")
-                .then((response) =>
-                {
+                .then((response) => {
                     this.setState({
                         app_info: response.data
                     });
@@ -31,57 +29,48 @@ class TopBar extends React.Component {
         }
     }
 
-    handleUploadButtonClicked = (e) => {
-        e.preventDefault();
-        if (this.uploadInput && this.uploadInput.files.length > 0) {
-            const domForm = new FormData();
-            domForm.append("uploadedphoto", this.uploadInput.files[0]);
+    handleFileSelected = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
 
-            axios.post("/photos/new", domForm)
-                .then((res) => {
-                    console.log("Upload success:", res.data);
-                })
-                .catch((err) => {
-                    console.error("Upload error:", err);
-                });
-        }
+        const formData = new FormData();
+        formData.append('uploadedphoto', file);
+
+        axios.post('/photos/new', formData)
+            .then((res) => {
+                console.log("Upload successful:", res.data);
+                alert("Photo uploaded successfully!");
+
+                if (this.props.onPhotoUploaded) {
+                    this.props.onPhotoUploaded();
+                }
+            })
+            .catch(err => {
+                console.error("Upload error:", err);
+                alert("Photo upload failed!");
+            });
+    };
+
+    handleAddPhotoClick = () => {
+        this.uploadInput.current.click();
     };
 
     render() {
         return this.state.app_info ? (
             <AppBar className="topbar-appBar" position="absolute">
                 <Toolbar>
-
-                    <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>Brown University</Typography>
-                    <Typography variant="h5" component="div" sx={{ flexGrow: 1 }} color="inherit">{this.props.main_content}</Typography>
-
-                    {/* ----- Hidden File Input ----- */}
+                    <Typography variant="h5" sx={{ flexGrow: 1 }}>Brown University</Typography>
+                        <Typography variant="h5" sx={{ flexGrow: 1 }}>{this.props.main_content}</Typography>
+                        <Button color="inherit" onClick={this.handleAddPhotoClick}>Add Photo</Button>
+                        <Typography variant="h6" sx={{ mr: 2 }}>Version: {this.state.app_info.version}</Typography>
                     <input
                         type="file"
                         accept="image/*"
-                        ref={(ref) => { this.uploadInput = ref; }}
-                        style={{ display: "none" }}
+                        ref={this.uploadInput}
+                        style={{ display: 'none' }}
+                        onChange={this.handleFileSelected}
                     />
-
-                    {/* ----- Add Photo Button ----- */}
-                    <Button
-                        color="inherit"
-                        onClick={() => this.uploadInput && this.uploadInput.click()}
-                        sx={{ marginRight: "16px" }}
-                    >
-                        Add Photo
-                    </Button>
-
-                    {/* ----- Upload Button ----- */}
-                    <Button
-                        color="inherit"
-                        onClick={this.handleUploadButtonClicked}
-                        sx={{ marginRight: "16px" }}
-                    >
-                        Upload
-                    </Button>
-
-                    <Typography variant="h5" component="div" color="inherit">Version: {this.state.app_info.version}</Typography>
+                    
                 </Toolbar>
             </AppBar>
         ) : (

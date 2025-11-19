@@ -39,6 +39,10 @@ const async = require("async");
 const express = require("express");
 const app = express();
 
+const multer = require("multer");
+const fs = require("fs");
+const processFormBody = multer({ storage: multer.memoryStorage() }).single('uploadedphoto');
+
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
 const Photo = require("./schema/photo.js");
@@ -54,6 +58,7 @@ mongoose.connect("mongodb://127.0.0.1/project6", {
 // (http://expressjs.com/en/starter/static-files.html) do all the work for us.
 app.use(express.static(__dirname));
 app.use(express.json());
+app.use('/images', express.static(__dirname + '/images'));
 
 app.get("/", function (request, response) {
   response.send("Simple web server of files from " + __dirname);
@@ -276,6 +281,45 @@ app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
   }
 });
 
+app.post("/photos/new", (request, response) => {
+    processFormBody(request, response, async function (err) {
+        if (err || !request.file) {
+            console.error("Error processing file:", err);
+            return response.status(400).send({ error: "No file uploaded or upload failed." });
+        }
+
+        try {
+            // Generate unique filename
+            const timestamp = new Date().valueOf();
+            const filename = "U" + String(timestamp) + request.file.originalname;
+
+            // Save file to images folder
+            fs.writeFileSync("./images/" + filename, request.file.buffer);
+
+            // Assign a user_id for now (since login isn’t implemented)
+            const defaultUser = await User.findOne(); // pick first user in DB
+            if (!defaultUser) {
+                return response.status(400).send({ error: "No users in database to assign photo to." });
+            }
+
+            // Create Photo object in MongoDB
+            const newPhoto = new Photo({
+                file_name: filename,
+                date_time: new Date(),
+                user_id: defaultUser._id,
+                comments: [],
+            });
+
+            await newPhoto.save();
+            console.log("Photo uploaded successfully:", filename);
+            response.status(200).send(newPhoto);
+
+        } catch (error) {
+            console.error("Error saving photo:", error);
+            response.status(500).send({ error: "Failed to save photo" });
+        }
+    });
+});
 
 
 const server = app.listen(3000, function () {
