@@ -1,6 +1,4 @@
-"use strict";
-
-const mongoose = require("mongoose");
+import mongoose from "mongoose";
 
 /**
  * Define the Mongoose Schema for a Comment.
@@ -22,4 +20,4 @@ const User = mongoose.model("User", userSchema);
 /**
  * Make this available to our application.
  */
-module.exports = User;
+export default User;
