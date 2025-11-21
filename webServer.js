@@ -37,11 +37,14 @@ mongoose.Promise = require("bluebird");
 const async = require("async");
 
 const express = require("express");
+const session = require('express-session');
 const app = express();
 
 const multer = require("multer");
 const fs = require("fs");
 const processFormBody = multer({ storage: multer.memoryStorage() }).single('uploadedphoto');
+
+
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
@@ -60,9 +63,27 @@ app.use(express.static(__dirname));
 app.use(express.json());
 app.use('/images', express.static(__dirname + '/images'));
 
+//Session configuration
+app.use(session({
+    secret: 'your-secret-key-here',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } 
+}));
+
+app.use(express.json());
+
 app.get("/", function (request, response) {
   response.send("Simple web server of files from " + __dirname);
 });
+
+// Middleware to check if user is logged in
+function requireAuth(req, res, next) {
+    if (!req.session.user) {
+        return res.status(401).send('Unauthorized');
+    }
+    next();
+}
 
 /**
  * Use express to handle argument passing in the URL. This .get will cause
@@ -145,7 +166,7 @@ app.get("/test/:p1", function (request, response) {
 /**
  * URL /user/list - Returns all the User objects.
  */
-app.get("/user/list", async (request, response) => {
+app.get("/user/list", requireAuth, async (request, response) => {
   try{
     const users = await User.find({}, '_id first_name last_name');
     response.status(200).send(users);
@@ -159,7 +180,7 @@ app.get("/user/list", async (request, response) => {
 /**
  * URL /user/:id - Returns the information for User (id).
  */
-app.get("/user/:id", async (request, response) => {
+app.get("/user/:id", requireAuth, async (request, response) => {
   try{
     const user = await User.findById(request.params.id, '_id first_name last_name location description occupation');
     if (!user){
@@ -175,9 +196,63 @@ app.get("/user/:id", async (request, response) => {
 });
 
 /**
+ * URL /admin/login - Logs in a user by setting session user_id
+ */
+
+// Login endpoint
+app.post('/admin/login', requireAuth, async (req, res) => {
+    const { login_name } = req.body;
+    
+    if (!login_name) {
+        return res.status(400).send('Login name is required');
+    }
+    
+    try {
+        const user = await User.findOne({ login_name: login_name });
+        
+        if (!user) {
+            return res.status(400).send('Invalid login name');
+        }
+        
+        // Store user info in session
+        req.session.user = {
+            _id: user._id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            login_name: user.login_name
+        };
+        
+        // Return user info
+        res.status(200).json({
+            _id: user._id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            login_name: user.login_name
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Logout endpoint
+app.post('/admin/logout', requireAuth, (req, res) => {
+    if (!req.session.user) {
+        return res.status(400).send('No user is currently logged in');
+    }
+    
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).send('Error logging out');
+        }
+        res.status(200).send('Logout successful');
+    });
+});
+
+/**
  * URL /photosOfUser/:id - Returns the Photos for User (id).
  */
-app.get("/photosOfUser/:id", async (request, response) => {
+app.get("/photosOfUser/:id", requireAuth, async (request, response) => {
   try {
     const user = await User.findById(request.params.id);
     if (!user) {
@@ -211,7 +286,7 @@ app.get("/photosOfUser/:id", async (request, response) => {
   }
 });
 
-app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
+app.post("/commentsOfPhoto/:photo_id", requireAuth, async (request, response) => {
   const photoId = request.params.photo_id;
   const commentText =
     request.body && typeof request.body.comment === "string"
