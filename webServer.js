@@ -360,24 +360,24 @@ app.post("/photos/new", (request, response) => {
     processFormBody(request, response, async function (err) {
         if (err || !request.file) {
             console.error("Error processing file:", err);
-            return response.status(400).send({ error: "No file uploaded or upload failed." });
+            return response
+                .status(400)
+                .send({ error: "No file uploaded or upload failed." });
         }
 
         try {
-            // Generate unique filename
-            const timestamp = new Date().valueOf();
-            const filename = "U" + String(timestamp) + request.file.originalname;
+            const timestamp = Date.now();
+            const filename = "U" + timestamp + request.file.originalname;
 
-            // Save file to images folder
             fs.writeFileSync("./images/" + filename, request.file.buffer);
 
-            // Assign a user_id for now (since login isn’t implemented)
-            const defaultUser = await User.findOne(); // pick first user in DB
+            const defaultUser = await User.findOne();
             if (!defaultUser) {
-                return response.status(400).send({ error: "No users in database to assign photo to." });
+                return response
+                    .status(400)
+                    .send({ error: "No users in database to assign photo to." });
             }
 
-            // Create Photo object in MongoDB
             const newPhoto = new Photo({
                 file_name: filename,
                 date_time: new Date(),
@@ -387,11 +387,11 @@ app.post("/photos/new", (request, response) => {
 
             await newPhoto.save();
             console.log("Photo uploaded successfully:", filename);
-            response.status(200).send(newPhoto);
 
+            return response.status(200).send(newPhoto);
         } catch (error) {
             console.error("Error saving photo:", error);
-            response.status(500).send({ error: "Failed to save photo" });
+            return response.status(500).send({ error: "Failed to save photo" });
         }
     });
 });
