@@ -39,7 +39,7 @@ class TopBar extends React.Component {
         axios.post('/photos/new', formData)
             .then((res) => {
                 console.log("Upload successful:", res.data);
-                alert("Photo uploaded successfully!");
+                console.log("Photo uploaded successfully!");
 
                 if (this.props.onPhotoUploaded) {
                     this.props.onPhotoUploaded();
@@ -47,7 +47,7 @@ class TopBar extends React.Component {
             })
             .catch(err => {
                 console.error("Upload error:", err);
-                alert("Photo upload failed!");
+                console.log("Photo upload failed!");
             });
     };
 
