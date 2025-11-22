@@ -4,7 +4,11 @@ import {
   CircularProgress,
   Card,
   CardContent,
-  CardMedia
+  CardMedia,
+  TextField,
+  Button,
+  Box,
+  Alert
 } from '@mui/material';
 import axios from 'axios';
 import './userPhotos.css';
@@ -18,7 +22,10 @@ class UserPhotos extends React.Component {
     this.state = {
       photos: null,
       loading: true,
-      error: null
+      error: null,
+      commentTexts: {}, // Track comment input for each photo
+      submittingComment: {}, // Track which photo is submitting
+      commentError: {} // Track errors for each photo
     };
   }
 
@@ -52,6 +59,81 @@ class UserPhotos extends React.Component {
           error: errorMessage,
           loading: false
         });
+      });
+  }
+
+  handleCommentChange = (photoId, value) => {
+    this.setState(prevState => ({
+      commentTexts: {
+        ...prevState.commentTexts,
+        [photoId]: value
+      },
+      commentError: {
+        ...prevState.commentError,
+        [photoId]: null
+      }
+    }));
+  }
+
+  handleAddComment = (photoId) => {
+    const commentText = this.state.commentTexts[photoId] || '';
+    
+    // Validate comment is not empty
+    if (!commentText.trim()) {
+      this.setState(prevState => ({
+        commentError: {
+          ...prevState.commentError,
+          [photoId]: 'Comment cannot be empty'
+        }
+      }));
+      return;
+    }
+
+    // Set submitting state
+    this.setState(prevState => ({
+      submittingComment: {
+        ...prevState.submittingComment,
+        [photoId]: true
+      },
+      commentError: {
+        ...prevState.commentError,
+        [photoId]: null
+      }
+    }));
+
+    // POST comment to server
+    axios.post(`/commentsOfPhoto/${photoId}`, {
+      comment: commentText
+    })
+      .then(() => {
+        // Clear comment input and reload photos
+        this.setState(prevState => ({
+          commentTexts: {
+            ...prevState.commentTexts,
+            [photoId]: ''
+          },
+          submittingComment: {
+            ...prevState.submittingComment,
+            [photoId]: false
+          }
+        }));
+        // Reload photos to show new comment
+        this.loadUserPhotos();
+      })
+      .catch((err) => {
+        const errorMessage = err.response
+          ? err.response.data?.error || `Failed to add comment: ${err.response.statusText || err.response.status}`
+          : `Failed to add comment: ${err.message}`;
+        this.setState(prevState => ({
+          commentError: {
+            ...prevState.commentError,
+            [photoId]: errorMessage
+          },
+          submittingComment: {
+            ...prevState.submittingComment,
+            [photoId]: false
+          }
+        }));
       });
   }
 
@@ -136,6 +218,35 @@ class UserPhotos extends React.Component {
                   ))}
                 </div>
               )}
+
+              {/* Add Comment Section */}
+              <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Add a Comment:
+                </Typography>
+                {this.state.commentError[photo._id] && (
+                  <Alert severity="error" sx={{ mb: 1 }}>
+                    {this.state.commentError[photo._id]}
+                  </Alert>
+                )}
+                <TextField
+                  fullWidth
+                  multiline
+                  rows={3}
+                  placeholder="Write a comment..."
+                  value={this.state.commentTexts[photo._id] || ''}
+                  onChange={(e) => this.handleCommentChange(photo._id, e.target.value)}
+                  disabled={this.state.submittingComment[photo._id]}
+                  sx={{ mb: 1 }}
+                />
+                <Button
+                  variant="contained"
+                  onClick={() => this.handleAddComment(photo._id)}
+                  disabled={this.state.submittingComment[photo._id] || !this.state.commentTexts[photo._id]?.trim()}
+                >
+                  {this.state.submittingComment[photo._id] ? 'Posting...' : 'Post Comment'}
+                </Button>
+              </Box>
             </CardContent>
           </Card>
         ))}

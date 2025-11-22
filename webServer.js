@@ -37,7 +37,11 @@ mongoose.Promise = require("bluebird");
 const async = require("async");
 
 const express = require("express");
+const bodyParser = require("body-parser");
 const app = express();
+
+// Middleware for parsing JSON request bodies
+app.use(bodyParser.json());
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
@@ -202,6 +206,67 @@ app.get("/photosOfUser/:id", async (request, response) => {
   } catch (error) {
     console.error("Error fetching photos for user:", error);
     return response.status(400).send({ error: "Invalid user ID" });
+  }
+});
+
+/**
+ * URL /commentsOfPhoto/:photo_id - Add a comment to the photo.
+ * NOTE: This endpoint requires login to be implemented.
+ * Once login is implemented, uncomment the session check below.
+ */
+app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
+  try {
+    const photoId = request.params.photo_id;
+    const commentText = request.body.comment;
+
+    // Validate comment is not empty
+    if (!commentText || !commentText.trim()) {
+      return response.status(400).send({ error: "Comment cannot be empty" });
+    }
+
+    // Find the photo
+    const photo = await Photo.findById(photoId);
+    if (!photo) {
+      return response.status(400).send({ error: "Photo not found" });
+    }
+
+    // TODO: Once login is implemented, uncomment this section and remove the TEMPORARY TESTING code below:
+    // Check if user is logged in
+    // if (!request.session || !request.session.user_id) {
+    //   return response.status(401).send({ error: "Unauthorized - must be logged in" });
+    // }
+    // const userId = request.session.user_id;
+
+    // TEMPORARY TESTING MODE: Remove this once login is implemented!
+    // This allows testing comments without login by using the first user in the database
+    let userId = request.session?.user_id || null;
+    if (!userId) {
+      // For testing only - get first user from database
+      const testUser = await User.findOne({});
+      if (testUser) {
+        userId = testUser._id;
+        console.log("TESTING MODE: Using test user for comment:", userId);
+      } else {
+        return response.status(401).send({ error: "Unauthorized - must be logged in to comment" });
+      }
+    }
+
+    // Create new comment
+    const newComment = {
+      comment: commentText.trim(),
+      date_time: new Date(),
+      user_id: userId
+    };
+
+    // Add comment to photo's comments array
+    photo.comments.push(newComment);
+    await photo.save();
+
+    // Return success
+    return response.status(200).send({ message: "Comment added successfully" });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    return response.status(400).send({ error: "Failed to add comment" });
   }
 });
 
