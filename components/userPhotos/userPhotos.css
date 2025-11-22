@@ -26,3 +26,14 @@
   background-color: #f5f5f5;
   border-radius: 4px;
 }
+
+.comment-form {
+  display: flex;
+  gap: 8px;
+  padding: 16px;
+  align-items: center;
+}
+
+.comment-success-alert {
+  margin-bottom: 12px;
+}

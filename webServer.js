@@ -37,7 +37,14 @@ mongoose.Promise = require("bluebird");
 const async = require("async");
 
 const express = require("express");
+const session = require('express-session');
 const app = express();
+
+const multer = require("multer");
+const fs = require("fs");
+const processFormBody = multer({ storage: multer.memoryStorage() }).single('uploadedphoto');
+
+
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
@@ -53,10 +60,30 @@ mongoose.connect("mongodb://127.0.0.1/project6", {
 // We have the express static module
 // (http://expressjs.com/en/starter/static-files.html) do all the work for us.
 app.use(express.static(__dirname));
+app.use(express.json());
+app.use('/images', express.static(__dirname + '/images'));
+
+//Session configuration
+app.use(session({
+    secret: 'your-secret-key-here',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { secure: false } 
+}));
+
+app.use(express.json());
 
 app.get("/", function (request, response) {
   response.send("Simple web server of files from " + __dirname);
 });
+
+// Middleware to check if user is logged in
+function requireAuth(req, res, next) {
+    if (!req.session.user) {
+        return res.status(401).send('Unauthorized');
+    }
+    next();
+}
 
 /**
  * Use express to handle argument passing in the URL. This .get will cause
@@ -139,7 +166,7 @@ app.get("/test/:p1", function (request, response) {
 /**
  * URL /user/list - Returns all the User objects.
  */
-app.get("/user/list", async (request, response) => {
+app.get("/user/list", requireAuth, async (request, response) => {
   try{
     const users = await User.find({}, '_id first_name last_name');
     response.status(200).send(users);
@@ -153,7 +180,7 @@ app.get("/user/list", async (request, response) => {
 /**
  * URL /user/:id - Returns the information for User (id).
  */
-app.get("/user/:id", async (request, response) => {
+app.get("/user/:id", requireAuth, async (request, response) => {
   try{
     const user = await User.findById(request.params.id, '_id first_name last_name location description occupation');
     if (!user){
@@ -169,9 +196,63 @@ app.get("/user/:id", async (request, response) => {
 });
 
 /**
+ * URL /admin/login - Logs in a user by setting session user_id
+ */
+
+// Login endpoint
+app.post('/admin/login', requireAuth, async (req, res) => {
+    const { login_name } = req.body;
+    
+    if (!login_name) {
+        return res.status(400).send('Login name is required');
+    }
+    
+    try {
+        const user = await User.findOne({ login_name: login_name });
+        
+        if (!user) {
+            return res.status(400).send('Invalid login name');
+        }
+        
+        // Store user info in session
+        req.session.user = {
+            _id: user._id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            login_name: user.login_name
+        };
+        
+        // Return user info
+        res.status(200).json({
+            _id: user._id,
+            first_name: user.first_name,
+            last_name: user.last_name,
+            login_name: user.login_name
+        });
+    } catch (err) {
+        console.error('Login error:', err);
+        res.status(500).send('Internal server error');
+    }
+});
+
+// Logout endpoint
+app.post('/admin/logout', requireAuth, (req, res) => {
+    if (!req.session.user) {
+        return res.status(400).send('No user is currently logged in');
+    }
+    
+    req.session.destroy((err) => {
+        if (err) {
+            return res.status(500).send('Error logging out');
+        }
+        res.status(200).send('Logout successful');
+    });
+});
+
+/**
  * URL /photosOfUser/:id - Returns the Photos for User (id).
  */
-app.get("/photosOfUser/:id", async (request, response) => {
+app.get("/photosOfUser/:id", requireAuth, async (request, response) => {
   try {
     const user = await User.findById(request.params.id);
     if (!user) {
@@ -205,6 +286,115 @@ app.get("/photosOfUser/:id", async (request, response) => {
   }
 });
 
+app.post("/commentsOfPhoto/:photo_id", requireAuth, async (request, response) => {
+  const photoId = request.params.photo_id;
+  const commentText =
+    request.body && typeof request.body.comment === "string"
+      ? request.body.comment.trim()
+      : "";
+
+  if (!commentText) {
+    response.status(400).send({ error: "Comment text must not be empty." });
+    return;
+  }
+
+  const sessionUserId =
+    request.session &&
+    (request.session.user_id ||
+      (request.session.user && request.session.user._id));
+  const requestUserId =
+    request.body && typeof request.body.user_id === "string"
+      ? request.body.user_id
+      : null;
+  const userId = sessionUserId || requestUserId;
+
+  if (!userId) {
+    response.status(401).send({ error: "User must be logged in to comment." });
+    return;
+  }
+
+  try {
+    const [photo, user] = await Promise.all([
+      Photo.findById(photoId),
+      User.findById(userId, "_id first_name last_name"),
+    ]);
+
+    if (!photo) {
+      response.status(400).send({ error: "Photo not found." });
+      return;
+    }
+
+    if (!user) {
+      response.status(400).send({ error: "User not found." });
+      return;
+    }
+
+    const newComment = {
+      comment: commentText,
+      date_time: new Date(),
+      user_id: user._id,
+    };
+
+    photo.comments.push(newComment);
+    await photo.save();
+
+    const savedComment = photo.comments[photo.comments.length - 1];
+
+    response.status(200).send({
+      _id: savedComment._id,
+      comment: savedComment.comment,
+      date_time: savedComment.date_time,
+      user: {
+        _id: user._id,
+        first_name: user.first_name,
+        last_name: user.last_name,
+      },
+    });
+  } catch (error) {
+    console.error("Error adding comment to photo:", error);
+    response.status(500).send({ error: "Failed to add comment to photo." });
+  }
+});
+
+app.post("/photos/new", (request, response) => {
+    processFormBody(request, response, async function (err) {
+        if (err || !request.file) {
+            console.error("Error processing file:", err);
+            return response
+                .status(400)
+                .send({ error: "No file uploaded or upload failed." });
+        }
+
+        try {
+            const timestamp = Date.now();
+            const filename = "U" + timestamp + request.file.originalname;
+
+            fs.writeFileSync("./images/" + filename, request.file.buffer);
+
+            const defaultUser = await User.findOne();
+            if (!defaultUser) {
+                return response
+                    .status(400)
+                    .send({ error: "No users in database to assign photo to." });
+            }
+
+            const newPhoto = new Photo({
+                file_name: filename,
+                date_time: new Date(),
+                user_id: defaultUser._id,
+                comments: [],
+            });
+
+            await newPhoto.save();
+            console.log("Photo uploaded successfully:", filename);
+
+            return response.status(200).send(newPhoto);
+        } catch (error) {
+            console.error("Error saving photo:", error);
+            return response.status(500).send({ error: "Failed to save photo" });
+        }
+    });
+});
 
 
 const server = app.listen(3000, function () {

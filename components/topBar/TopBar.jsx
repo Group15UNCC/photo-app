@@ -1,31 +1,27 @@
 import React from 'react';
 import {
-    AppBar, Toolbar, Typography
+    AppBar, Toolbar, Typography, Button
 } from '@mui/material';
 import './TopBar.css';
 import axios from 'axios';
 
-/**
- * Define TopBar, a React componment of project #5
- */
 class TopBar extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
             app_info: undefined
         };
+        this.uploadInput = React.createRef();
     }
 
     componentDidMount() {
         this.handleAppInfoChange();
     }
 
-    handleAppInfoChange(){
-        const app_info = this.state.app_info;
-        if (app_info === undefined){
+    handleAppInfoChange() {
+        if (!this.state.app_info) {
             axios.get("/test/info")
-                .then((response) =>
-                {
+                .then((response) => {
                     this.setState({
                         app_info: response.data
                     });
@@ -33,19 +29,54 @@ class TopBar extends React.Component {
         }
     }
 
-  render() {
-    return this.state.app_info ? (
-      <AppBar className="topbar-appBar" position="absolute">
-        <Toolbar>
-            <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>Todd Dobbs</Typography>
-            <Typography variant="h5" component="div" sx={{ flexGrow: 1 }} color="inherit">{this.props.main_content}</Typography>
-            <Typography variant="h5" component="div" color="inherit">Version: {this.state.app_info.version}</Typography>
-        </Toolbar>
-      </AppBar>
-    ) : (
-        <div/>
-    );
-  }
+    handleFileSelected = (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('uploadedphoto', file);
+
+        axios.post('/photos/new', formData)
+            .then((res) => {
+                console.log("Upload successful:", res.data);
+                console.log("Photo uploaded successfully!");
+
+                if (this.props.onPhotoUploaded) {
+                    this.props.onPhotoUploaded();
+                }
+            })
+            .catch(err => {
+                console.error("Upload error:", err);
+                console.log("Photo upload failed!");
+            });
+    };
+
+    handleAddPhotoClick = () => {
+        this.uploadInput.current.click();
+    };
+
+    render() {
+        return this.state.app_info ? (
+            <AppBar className="topbar-appBar" position="absolute">
+                <Toolbar>
+                    <Typography variant="h5" sx={{ flexGrow: 1 }}>Brown University</Typography>
+                        <Typography variant="h5" sx={{ flexGrow: 1 }}>{this.props.main_content}</Typography>
+                        <Button color="inherit" onClick={this.handleAddPhotoClick}>Add Photo</Button>
+                        <Typography variant="h6" sx={{ mr: 2 }}>Version: {this.state.app_info.version}</Typography>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        ref={this.uploadInput}
+                        style={{ display: 'none' }}
+                        onChange={this.handleFileSelected}
+                    />
+                    
+                </Toolbar>
+            </AppBar>
+        ) : (
+            <div />
+        );
+    }
 }
 
 export default TopBar;
