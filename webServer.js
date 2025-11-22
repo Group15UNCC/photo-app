@@ -79,10 +79,19 @@ app.get("/", function (request, response) {
 
 // Middleware to check if user is logged in
 function requireAuth(req, res, next) {
-    if (!req.session.user) {
-        return res.status(401).send('Unauthorized');
-    }
-    next();
+  // Accept either req.session.user (object) or legacy req.session.user_id (string).
+  if (!req.session || !(req.session.user || req.session.user_id)) {
+    return res.status(401).send('Unauthorized');
+  }
+
+  // Attach a consistent req.user object for downstream handlers.
+  if (req.session.user) {
+    req.user = req.session.user;
+  } else if (req.session.user_id) {
+    req.user = { _id: req.session.user_id };
+  }
+
+  next();
 }
 
 /**
@@ -199,8 +208,8 @@ app.get("/user/:id", requireAuth, async (request, response) => {
  * URL /admin/login - Logs in a user by setting session user_id
  */
 
-// Login endpoint
-app.post('/admin/login', requireAuth, async (req, res) => {
+// Login endpoint (public)
+app.post('/admin/login', async (req, res) => {
     const { login_name } = req.body;
     
     if (!login_name) {
