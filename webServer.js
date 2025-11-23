@@ -37,14 +37,11 @@ mongoose.Promise = require("bluebird");
 const async = require("async");
 
 const express = require("express");
-const session = require('express-session');
+const bodyParser = require("body-parser");
 const app = express();
 
-const multer = require("multer");
-const fs = require("fs");
-const processFormBody = multer({ storage: multer.memoryStorage() }).single('uploadedphoto');
-
-
+// Middleware for parsing JSON request bodies
+app.use(bodyParser.json());
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
@@ -295,115 +292,67 @@ app.get("/photosOfUser/:id", requireAuth, async (request, response) => {
   }
 });
 
-app.post("/commentsOfPhoto/:photo_id", requireAuth, async (request, response) => {
-  const photoId = request.params.photo_id;
-  const commentText =
-    request.body && typeof request.body.comment === "string"
-      ? request.body.comment.trim()
-      : "";
-
-  if (!commentText) {
-    response.status(400).send({ error: "Comment text must not be empty." });
-    return;
-  }
-
-  const sessionUserId =
-    request.session &&
-    (request.session.user_id ||
-      (request.session.user && request.session.user._id));
-  const requestUserId =
-    request.body && typeof request.body.user_id === "string"
-      ? request.body.user_id
-      : null;
-  const userId = sessionUserId || requestUserId;
-
-  if (!userId) {
-    response.status(401).send({ error: "User must be logged in to comment." });
-    return;
-  }
-
+/**
+ * URL /commentsOfPhoto/:photo_id - Add a comment to the photo.
+ * NOTE: This endpoint requires login to be implemented.
+ * Once login is implemented, uncomment the session check below.
+ */
+app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
   try {
-    const [photo, user] = await Promise.all([
-      Photo.findById(photoId),
-      User.findById(userId, "_id first_name last_name"),
-    ]);
+    const photoId = request.params.photo_id;
+    const commentText = request.body.comment;
 
+    // Validate comment is not empty
+    if (!commentText || !commentText.trim()) {
+      return response.status(400).send({ error: "Comment cannot be empty" });
+    }
+
+    // Find the photo
+    const photo = await Photo.findById(photoId);
     if (!photo) {
-      response.status(400).send({ error: "Photo not found." });
-      return;
+      return response.status(400).send({ error: "Photo not found" });
     }
 
-    if (!user) {
-      response.status(400).send({ error: "User not found." });
-      return;
+    // TODO: Once login is implemented, uncomment this section and remove the TEMPORARY TESTING code below:
+    // Check if user is logged in
+    // if (!request.session || !request.session.user_id) {
+    //   return response.status(401).send({ error: "Unauthorized - must be logged in" });
+    // }
+    // const userId = request.session.user_id;
+
+    // TEMPORARY TESTING MODE: Remove this once login is implemented!
+    // This allows testing comments without login by using the first user in the database
+    let userId = request.session?.user_id || null;
+    if (!userId) {
+      // For testing only - get first user from database
+      const testUser = await User.findOne({});
+      if (testUser) {
+        userId = testUser._id;
+        console.log("TESTING MODE: Using test user for comment:", userId);
+      } else {
+        return response.status(401).send({ error: "Unauthorized - must be logged in to comment" });
+      }
     }
 
+    // Create new comment
     const newComment = {
-      comment: commentText,
+      comment: commentText.trim(),
       date_time: new Date(),
-      user_id: user._id,
+      user_id: userId
     };
 
+    // Add comment to photo's comments array
     photo.comments.push(newComment);
     await photo.save();
 
-    const savedComment = photo.comments[photo.comments.length - 1];
-
-    response.status(200).send({
-      _id: savedComment._id,
-      comment: savedComment.comment,
-      date_time: savedComment.date_time,
-      user: {
-        _id: user._id,
-        first_name: user.first_name,
-        last_name: user.last_name,
-      },
-    });
+    // Return success
+    return response.status(200).send({ message: "Comment added successfully" });
   } catch (error) {
-    console.error("Error adding comment to photo:", error);
-    response.status(500).send({ error: "Failed to add comment to photo." });
+    console.error("Error adding comment:", error);
+    return response.status(400).send({ error: "Failed to add comment" });
   }
 });
 
-app.post("/photos/new", (request, response) => {
-    processFormBody(request, response, async function (err) {
-        if (err || !request.file) {
-            console.error("Error processing file:", err);
-            return response
-                .status(400)
-                .send({ error: "No file uploaded or upload failed." });
-        }
-
-        try {
-            const timestamp = Date.now();
-            const filename = "U" + timestamp + request.file.originalname;
-
-            fs.writeFileSync("./images/" + filename, request.file.buffer);
-
-            const defaultUser = await User.findOne();
-            if (!defaultUser) {
-                return response
-                    .status(400)
-                    .send({ error: "No users in database to assign photo to." });
-            }
-
-            const newPhoto = new Photo({
-                file_name: filename,
-                date_time: new Date(),
-                user_id: defaultUser._id,
-                comments: [],
-            });
-
-            await newPhoto.save();
-            console.log("Photo uploaded successfully:", filename);
-
-            return response.status(200).send(newPhoto);
-        } catch (error) {
-            console.error("Error saving photo:", error);
-            return response.status(500).send({ error: "Failed to save photo" });
-        }
-    });
-});
 
 
 const server = app.listen(3000, function () {

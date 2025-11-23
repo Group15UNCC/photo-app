@@ -38,8 +38,7 @@ class UserDetail extends React.Component {
                 this.setState({
                     user: new_user
                 });
-                const main_content = "User Details for " + new_user.first_name + " " + new_user.last_name;
-                this.props.changeMainContent(main_content);
+                // Note: changeMainContent prop removed - not needed for current implementation
             })
             .catch((error) => {
                 console.error("Error fetching user details:", error);
