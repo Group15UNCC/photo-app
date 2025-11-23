@@ -158,7 +158,8 @@ app.get("/test/:p1", function (request, response) {
  */
 function requireLogin(request, response, next) {
   if (!request.session || !request.session.user_id) {
-    return response.status(401).send({ error: "Unauthorized - must be logged in" });
+    response.status(401).send({ error: "Unauthorized - must be logged in" });
+    return;
   }
   next();
 }
@@ -198,6 +199,7 @@ app.post("/admin/login", async (request, response) => {
     // Return user information (excluding sensitive data)
     return response.status(200).send({
       _id: user._id,
+      login_name: user.login_name,
       first_name: user.first_name,
       last_name: user.last_name,
       location: user.location,
@@ -214,7 +216,7 @@ app.post("/admin/login", async (request, response) => {
  * URL /admin/logout - Logout the current user
  * POST request with empty body
  */
-app.post("/admin/logout", async (request, response) => {
+app.post("/admin/logout", requireLogin, async (request, response) => {
   try {
     if (!request.session || !request.session.user_id) {
       return response.status(400).send({ error: "User is not logged in" });
@@ -232,6 +234,7 @@ app.post("/admin/logout", async (request, response) => {
     console.error("Error during logout:", error);
     return response.status(400).send({ error: "Logout failed" });
   }
+  return null;
 });
 
 /**
@@ -280,7 +283,7 @@ app.post("/user", async (request, response) => {
 
     // Return success (don't return password)
     return response.status(200).send({
-      message: "User registered successfully",
+      //message: "User registered successfully",
       _id: newUser._id,
       first_name: newUser.first_name,
       last_name: newUser.last_name
@@ -298,11 +301,11 @@ app.post("/user", async (request, response) => {
 app.get("/user/list", requireLogin, async (request, response) => {
   try{
     const users = await User.find({}, '_id first_name last_name');
-    response.status(200).send(users);
+    return response.status(200).send(users);
   }
   catch(error){
     console.error("Error fetching user list:", error);
-    response.status(500).send({ error: "Database error fetching user list"});
+    return response.status(500).send({ error: "Database error fetching user list"});
   }
 });
 
@@ -413,8 +416,8 @@ app.post("/commentsOfPhoto/:photo_id", requireLogin, async (request, response) =
  * Protected route - requires login
  */
 app.post("/photos/new", requireLogin, async (request, response) => {
-  processFormBody(request, response, async function (err) {
-    if (err || !request.file) {
+  processFormBody(request, response, async function (error1) {
+    if (error1 || !request.file) {
       return response.status(400).send({ error: "No file uploaded or upload error" });
     }
 
@@ -467,6 +470,7 @@ app.post("/photos/new", requireLogin, async (request, response) => {
       console.error("Error processing photo upload:", error);
       return response.status(400).send({ error: "Failed to process photo upload" });
     }
+    return null;
   });
 });
 

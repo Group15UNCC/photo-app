@@ -8,7 +8,8 @@
     "async": "^3.2.4",
     "axios": "^1.4.0",
     "form-data": "^4.0.0",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.21",
+    "test": "^3.3.0"
   },
   "devDependencies": {
     "mocha": "^11.7.2"

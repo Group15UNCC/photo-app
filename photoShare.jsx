@@ -42,15 +42,15 @@ class PhotoShare extends React.Component {
         // Not logged in - that's fine, LoginRegister will handle it
         this.setState({ loggedInUser: null });
       });
-  }
+  };
 
   handleLoginSuccess = (user) => {
     this.setState({ loggedInUser: user });
-  }
+  };
 
   handleLogout = () => {
     this.setState({ loggedInUser: null });
-  }
+  };
 
   render() {
     return (

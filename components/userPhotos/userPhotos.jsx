@@ -73,7 +73,7 @@ class UserPhotos extends React.Component {
         [photoId]: null
       }
     }));
-  }
+  };
 
   handleAddComment = (photoId) => {
     const commentText = this.state.commentTexts[photoId] || '';
@@ -135,7 +135,7 @@ class UserPhotos extends React.Component {
           }
         }));
       });
-  }
+  };
 
   render() {
     const { photos, loading, error } = this.state;

@@ -43,14 +43,14 @@ class LoginRegister extends React.Component {
       login_name: e.target.value,
       loginError: null
     });
-  }
+  };
 
   handleLoginPasswordChange = (e) => {
     this.setState({
       login_password: e.target.value,
       loginError: null
     });
-  }
+  };
 
   handleLogin = (e) => {
     e.preventDefault();
@@ -91,7 +91,7 @@ class LoginRegister extends React.Component {
           loading: false
         });
       });
-  }
+  };
 
   handleRegistrationFieldChange = (field) => (e) => {
     this.setState({
@@ -99,7 +99,7 @@ class LoginRegister extends React.Component {
       regError: null,
       regSuccess: false
     });
-  }
+  };
 
   handleRegister = (e) => {
     e.preventDefault();
@@ -152,7 +152,7 @@ class LoginRegister extends React.Component {
       description: reg_description.trim(),
       occupation: reg_occupation.trim()
     })
-      .then((response) => {
+      .then(() => {
         this.setState({
           registering: false,
           regSuccess: true,
@@ -178,7 +178,7 @@ class LoginRegister extends React.Component {
           regSuccess: false
         });
       });
-  }
+  };
 
   render() {
     const {

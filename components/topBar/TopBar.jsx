@@ -51,7 +51,7 @@ class TopBar extends React.Component {
             .catch((err) => {
                 console.error('Logout error:', err);
             });
-    }
+    };
 
     handleOpenUploadDialog = () => {
         this.setState({
@@ -59,7 +59,7 @@ class TopBar extends React.Component {
             uploadError: null,
             uploadSuccess: false
         });
-    }
+    };
 
     handleCloseUploadDialog = () => {
         this.setState({
@@ -71,7 +71,7 @@ class TopBar extends React.Component {
         if (this.uploadInput) {
             this.uploadInput.value = '';
         }
-    }
+    };
 
     handleUploadButtonClicked = (e) => {
         e.preventDefault();
@@ -132,7 +132,7 @@ class TopBar extends React.Component {
                     uploadSuccess: false
                 });
             });
-    }
+    };
 
     handleAppInfoChange(){
         const app_info = this.state.app_info;
