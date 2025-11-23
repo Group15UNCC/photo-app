@@ -11,6 +11,8 @@ const userSchema = new mongoose.Schema({
   location: String,
   description: String,
   occupation: String,
+  login_name: String, // Login identifier for authentication
+  password: String, // Password for authentication
 });
 
 /**

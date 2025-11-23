@@ -38,10 +38,23 @@ const async = require("async");
 
 const express = require("express");
 const bodyParser = require("body-parser");
+const multer = require("multer");
+const fs = require("fs");
+const session = require("express-session");
 const app = express();
 
 // Middleware for parsing JSON request bodies
 app.use(bodyParser.json());
+
+// Configure express-session middleware
+app.use(session({
+  secret: "secretKey",
+  resave: false,
+  saveUninitialized: false
+}));
+
+// Configure multer for file uploads
+const processFormBody = multer({storage: multer.memoryStorage()}).single('uploadedphoto');
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
@@ -141,9 +154,148 @@ app.get("/test/:p1", function (request, response) {
 });
 
 /**
- * URL /user/list - Returns all the User objects.
+ * Helper function to check if user is logged in
  */
-app.get("/user/list", async (request, response) => {
+function requireLogin(request, response, next) {
+  if (!request.session || !request.session.user_id) {
+    return response.status(401).send({ error: "Unauthorized - must be logged in" });
+  }
+  next();
+}
+
+/**
+ * URL /admin/login - Login a user
+ * POST request with JSON body: { login_name, password }
+ */
+app.post("/admin/login", async (request, response) => {
+  try {
+    const loginName = request.body.login_name;
+    const password = request.body.password;
+
+    if (!loginName) {
+      return response.status(400).send({ error: "login_name is required" });
+    }
+
+    if (!password) {
+      return response.status(400).send({ error: "password is required" });
+    }
+
+    // Find user by login_name
+    const user = await User.findOne({ login_name: loginName });
+    if (!user) {
+      return response.status(400).send({ error: "Invalid login_name or password" });
+    }
+
+    // Check password
+    if (user.password !== password) {
+      return response.status(400).send({ error: "Invalid login_name or password" });
+    }
+
+    // Store user info in session
+    request.session.user_id = user._id;
+    request.session.login_name = user.login_name;
+
+    // Return user information (excluding sensitive data)
+    return response.status(200).send({
+      _id: user._id,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      location: user.location,
+      description: user.description,
+      occupation: user.occupation
+    });
+  } catch (error) {
+    console.error("Error during login:", error);
+    return response.status(400).send({ error: "Login failed" });
+  }
+});
+
+/**
+ * URL /admin/logout - Logout the current user
+ * POST request with empty body
+ */
+app.post("/admin/logout", async (request, response) => {
+  try {
+    if (!request.session || !request.session.user_id) {
+      return response.status(400).send({ error: "User is not logged in" });
+    }
+
+    // Destroy session
+    request.session.destroy((err) => {
+      if (err) {
+        console.error("Error destroying session:", err);
+        return response.status(500).send({ error: "Failed to logout" });
+      }
+      return response.status(200).send({ message: "Logged out successfully" });
+    });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    return response.status(400).send({ error: "Logout failed" });
+  }
+});
+
+/**
+ * URL /user - Register a new user
+ * POST request with JSON body: { login_name, password, first_name, last_name, location, description, occupation }
+ */
+app.post("/user", async (request, response) => {
+  try {
+    const { login_name, password, first_name, last_name, location, description, occupation } = request.body;
+
+    // Validate required fields
+    if (!login_name || !login_name.trim()) {
+      return response.status(400).send({ error: "login_name is required and cannot be empty" });
+    }
+
+    if (!password || !password.trim()) {
+      return response.status(400).send({ error: "password is required and cannot be empty" });
+    }
+
+    if (!first_name || !first_name.trim()) {
+      return response.status(400).send({ error: "first_name is required and cannot be empty" });
+    }
+
+    if (!last_name || !last_name.trim()) {
+      return response.status(400).send({ error: "last_name is required and cannot be empty" });
+    }
+
+    // Check if login_name already exists
+    const existingUser = await User.findOne({ login_name: login_name.trim() });
+    if (existingUser) {
+      return response.status(400).send({ error: "login_name already exists" });
+    }
+
+    // Create new user
+    const newUser = new User({
+      login_name: login_name.trim(),
+      password: password.trim(),
+      first_name: first_name.trim(),
+      last_name: last_name.trim(),
+      location: location ? location.trim() : "",
+      description: description ? description.trim() : "",
+      occupation: occupation ? occupation.trim() : ""
+    });
+
+    await newUser.save();
+
+    // Return success (don't return password)
+    return response.status(200).send({
+      message: "User registered successfully",
+      _id: newUser._id,
+      first_name: newUser.first_name,
+      last_name: newUser.last_name
+    });
+  } catch (error) {
+    console.error("Error during registration:", error);
+    return response.status(400).send({ error: "Registration failed" });
+  }
+});
+
+/**
+ * URL /user/list - Returns all the User objects.
+ * Protected route - requires login
+ */
+app.get("/user/list", requireLogin, async (request, response) => {
   try{
     const users = await User.find({}, '_id first_name last_name');
     response.status(200).send(users);
@@ -156,8 +308,9 @@ app.get("/user/list", async (request, response) => {
 
 /**
  * URL /user/:id - Returns the information for User (id).
+ * Protected route - requires login
  */
-app.get("/user/:id", async (request, response) => {
+app.get("/user/:id", requireLogin, async (request, response) => {
   try{
     const user = await User.findById(request.params.id, '_id first_name last_name location description occupation');
     if (!user){
@@ -174,8 +327,9 @@ app.get("/user/:id", async (request, response) => {
 
 /**
  * URL /photosOfUser/:id - Returns the Photos for User (id).
+ * Protected route - requires login
  */
-app.get("/photosOfUser/:id", async (request, response) => {
+app.get("/photosOfUser/:id", requireLogin, async (request, response) => {
   try {
     const user = await User.findById(request.params.id);
     if (!user) {
@@ -211,10 +365,9 @@ app.get("/photosOfUser/:id", async (request, response) => {
 
 /**
  * URL /commentsOfPhoto/:photo_id - Add a comment to the photo.
- * NOTE: This endpoint requires login to be implemented.
- * Once login is implemented, uncomment the session check below.
+ * Protected route - requires login
  */
-app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
+app.post("/commentsOfPhoto/:photo_id", requireLogin, async (request, response) => {
   try {
     const photoId = request.params.photo_id;
     const commentText = request.body.comment;
@@ -230,26 +383,11 @@ app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
       return response.status(400).send({ error: "Photo not found" });
     }
 
-    // TODO: Once login is implemented, uncomment this section and remove the TEMPORARY TESTING code below:
     // Check if user is logged in
-    // if (!request.session || !request.session.user_id) {
-    //   return response.status(401).send({ error: "Unauthorized - must be logged in" });
-    // }
-    // const userId = request.session.user_id;
-
-    // TEMPORARY TESTING MODE: Remove this once login is implemented!
-    // This allows testing comments without login by using the first user in the database
-    let userId = request.session?.user_id || null;
-    if (!userId) {
-      // For testing only - get first user from database
-      const testUser = await User.findOne({});
-      if (testUser) {
-        userId = testUser._id;
-        console.log("TESTING MODE: Using test user for comment:", userId);
-      } else {
-        return response.status(401).send({ error: "Unauthorized - must be logged in to comment" });
-      }
+    if (!request.session || !request.session.user_id) {
+      return response.status(401).send({ error: "Unauthorized - must be logged in" });
     }
+    const userId = request.session.user_id;
 
     // Create new comment
     const newComment = {
@@ -268,6 +406,68 @@ app.post("/commentsOfPhoto/:photo_id", async (request, response) => {
     console.error("Error adding comment:", error);
     return response.status(400).send({ error: "Failed to add comment" });
   }
+});
+
+/**
+ * URL /photos/new - Upload a photo for the current user.
+ * Protected route - requires login
+ */
+app.post("/photos/new", requireLogin, async (request, response) => {
+  processFormBody(request, response, async function (err) {
+    if (err || !request.file) {
+      return response.status(400).send({ error: "No file uploaded or upload error" });
+    }
+
+    // Validate file is an image
+    if (!request.file.mimetype.startsWith('image/')) {
+      return response.status(400).send({ error: "File must be an image" });
+    }
+
+    // Check if user is logged in
+    if (!request.session || !request.session.user_id) {
+      return response.status(401).send({ error: "Unauthorized - must be logged in" });
+    }
+    const userId = request.session.user_id;
+
+    try {
+      // Generate unique filename
+      const timestamp = new Date().valueOf();
+      const filename = 'U' + String(timestamp) + request.file.originalname;
+
+      // Write file to images directory
+      fs.writeFile("./images/" + filename, request.file.buffer, async function (err) {
+        if (err) {
+          console.error("Error writing file:", err);
+          return response.status(500).send({ error: "Failed to save file" });
+        }
+
+        // Create Photo object in database
+        try {
+          const newPhoto = new Photo({
+            file_name: filename,
+            date_time: new Date(),
+            user_id: userId,
+            comments: []
+          });
+
+          await newPhoto.save();
+          return response.status(200).send({ 
+            message: "Photo uploaded successfully", 
+            photo: newPhoto,
+            user_id: userId 
+          });
+        } catch (dbError) {
+          console.error("Error creating photo in database:", dbError);
+          // Try to delete the file if database save failed
+          fs.unlink("./images/" + filename, () => {});
+          return response.status(500).send({ error: "Failed to save photo to database" });
+        }
+      });
+    } catch (error) {
+      console.error("Error processing photo upload:", error);
+      return response.status(400).send({ error: "Failed to process photo upload" });
+    }
+  });
 });
 
 
