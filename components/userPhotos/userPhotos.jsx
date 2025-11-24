@@ -42,12 +42,7 @@ class UserPhotos extends React.Component {
 
   loadUserPhotos() {
     const userId = this.props.match.params.userId;
-    this.setState({
-      loading: true,
-      error: null,
-      successMessage: '',
-      submitErrors: {}
-    });
+    this.setState({ loading: true, error: null });
 
     axios.get(`/photosOfUser/${userId}`)
       .then((response) => {
@@ -78,7 +73,7 @@ class UserPhotos extends React.Component {
         [photoId]: null
       }
     }));
-  }
+  };
 
   handleAddComment = (photoId) => {
     const commentText = this.state.commentTexts[photoId] || '';
@@ -140,10 +135,10 @@ class UserPhotos extends React.Component {
           }
         }));
       });
-  }
+  };
 
   render() {
-    const { photos, loading, error, commentTexts, submitErrors, submitting, successMessage } = this.state;
+    const { photos, loading, error } = this.state;
     const userId = this.props.match.params.userId;
 
     if (loading) {
@@ -175,11 +170,6 @@ class UserPhotos extends React.Component {
 
     return (
       <div className="userPhotos-container">
-        {successMessage ? (
-          <Alert severity="success" className="comment-success-alert">
-            {successMessage}
-          </Alert>
-        ) : null}
         <Typography variant="h6" gutterBottom>
           Photos of User {userId}
         </Typography>
@@ -258,30 +248,6 @@ class UserPhotos extends React.Component {
                 </Button>
               </Box>
             </CardContent>
-            <CardActions className="comment-form">
-              <TextField
-                label="Add a comment"
-                variant="outlined"
-                size="small"
-                fullWidth
-                value={commentTexts[photo._id] || ''}
-                onChange={(event) => this.handleCommentTextChange(photo._id, event.target.value)}
-                inputProps={{ maxLength: 500 }}
-              />
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => this.handleCommentSubmit(photo._id)}
-                disabled={Boolean(submitting[photo._id])}
-              >
-                {submitting[photo._id] ? 'Posting...' : 'Post'}
-              </Button>
-            </CardActions>
-            {submitErrors[photo._id] ? (
-              <Typography color="error" variant="body2" sx={{ mt: 1, px: 2 }}>
-                {submitErrors[photo._id]}
-              </Typography>
-            ) : null}
           </Card>
         ))}
       </div>

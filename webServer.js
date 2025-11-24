@@ -70,39 +70,10 @@ mongoose.connect("mongodb://127.0.0.1/project6", {
 // We have the express static module
 // (http://expressjs.com/en/starter/static-files.html) do all the work for us.
 app.use(express.static(__dirname));
-app.use(express.json());
-app.use('/images', express.static(__dirname + '/images'));
-
-//Session configuration
-app.use(session({
-    secret: 'your-secret-key-here',
-    resave: false,
-    saveUninitialized: false,
-    cookie: { secure: false } 
-}));
-
-app.use(express.json());
 
 app.get("/", function (request, response) {
   response.send("Simple web server of files from " + __dirname);
 });
-
-// Middleware to check if user is logged in
-function requireAuth(req, res, next) {
-  // Accept either req.session.user (object) or legacy req.session.user_id (string).
-  if (!req.session || !(req.session.user || req.session.user_id)) {
-    return res.status(401).send('Unauthorized');
-  }
-
-  // Attach a consistent req.user object for downstream handlers.
-  if (req.session.user) {
-    req.user = req.session.user;
-  } else if (req.session.user_id) {
-    req.user = { _id: req.session.user_id };
-  }
-
-  next();
-}
 
 /**
  * Use express to handle argument passing in the URL. This .get will cause
@@ -187,7 +158,8 @@ app.get("/test/:p1", function (request, response) {
  */
 function requireLogin(request, response, next) {
   if (!request.session || !request.session.user_id) {
-    return response.status(401).send({ error: "Unauthorized - must be logged in" });
+    response.status(401).send({ error: "Unauthorized - must be logged in" });
+    return;
   }
   next();
 }
@@ -227,6 +199,7 @@ app.post("/admin/login", async (request, response) => {
     // Return user information (excluding sensitive data)
     return response.status(200).send({
       _id: user._id,
+      login_name: user.login_name,
       first_name: user.first_name,
       last_name: user.last_name,
       location: user.location,
@@ -243,7 +216,7 @@ app.post("/admin/login", async (request, response) => {
  * URL /admin/logout - Logout the current user
  * POST request with empty body
  */
-app.post("/admin/logout", async (request, response) => {
+app.post("/admin/logout", requireLogin, async (request, response) => {
   try {
     if (!request.session || !request.session.user_id) {
       return response.status(400).send({ error: "User is not logged in" });
@@ -261,6 +234,7 @@ app.post("/admin/logout", async (request, response) => {
     console.error("Error during logout:", error);
     return response.status(400).send({ error: "Logout failed" });
   }
+  return null;
 });
 
 /**
@@ -309,7 +283,7 @@ app.post("/user", async (request, response) => {
 
     // Return success (don't return password)
     return response.status(200).send({
-      message: "User registered successfully",
+      //message: "User registered successfully",
       _id: newUser._id,
       first_name: newUser.first_name,
       last_name: newUser.last_name
@@ -327,11 +301,11 @@ app.post("/user", async (request, response) => {
 app.get("/user/list", requireLogin, async (request, response) => {
   try{
     const users = await User.find({}, '_id first_name last_name');
-    response.status(200).send(users);
+    return response.status(200).send(users);
   }
   catch(error){
     console.error("Error fetching user list:", error);
-    response.status(500).send({ error: "Database error fetching user list"});
+    return response.status(500).send({ error: "Database error fetching user list"});
   }
 });
 
@@ -352,60 +326,6 @@ app.get("/user/:id", requireLogin, async (request, response) => {
     return response.status(400).send({ error: "Database error fetching user list"});
   }
   
-});
-
-/**
- * URL /admin/login - Logs in a user by setting session user_id
- */
-
-// Login endpoint (public)
-app.post('/admin/login', async (req, res) => {
-    const { login_name } = req.body;
-    
-    if (!login_name) {
-        return res.status(400).send('Login name is required');
-    }
-    
-    try {
-        const user = await User.findOne({ login_name: login_name });
-        
-        if (!user) {
-            return res.status(400).send('Invalid login name');
-        }
-        
-        // Store user info in session
-        req.session.user = {
-            _id: user._id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            login_name: user.login_name
-        };
-        
-        // Return user info
-        res.status(200).json({
-            _id: user._id,
-            first_name: user.first_name,
-            last_name: user.last_name,
-            login_name: user.login_name
-        });
-    } catch (err) {
-        console.error('Login error:', err);
-        res.status(500).send('Internal server error');
-    }
-});
-
-// Logout endpoint
-app.post('/admin/logout', requireAuth, (req, res) => {
-    if (!req.session.user) {
-        return res.status(400).send('No user is currently logged in');
-    }
-    
-    req.session.destroy((err) => {
-        if (err) {
-            return res.status(500).send('Error logging out');
-        }
-        res.status(200).send('Logout successful');
-    });
 });
 
 /**
@@ -496,8 +416,8 @@ app.post("/commentsOfPhoto/:photo_id", requireLogin, async (request, response) =
  * Protected route - requires login
  */
 app.post("/photos/new", requireLogin, async (request, response) => {
-  processFormBody(request, response, async function (err) {
-    if (err || !request.file) {
+  processFormBody(request, response, async function (error1) {
+    if (error1 || !request.file) {
       return response.status(400).send({ error: "No file uploaded or upload error" });
     }
 
@@ -550,6 +470,7 @@ app.post("/photos/new", requireLogin, async (request, response) => {
       console.error("Error processing photo upload:", error);
       return response.status(400).send({ error: "Failed to process photo upload" });
     }
+    return null;
   });
 });
 
