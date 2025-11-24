@@ -285,6 +285,7 @@ app.post("/user", async (request, response) => {
     return response.status(200).send({
       //message: "User registered successfully",
       _id: newUser._id,
+      login_name: newUser.login_name,
       first_name: newUser.first_name,
       last_name: newUser.last_name
     });
@@ -346,16 +347,20 @@ app.get("/photosOfUser/:id", requireLogin, async (request, response) => {
 
     await Promise.all(
       photos.map(async (p) => {
-        p.comments = await Promise.all(
-          p.comments.map(async (c) => {
-            const com = await User.findById(c.user_id, "_id first_name last_name");
-            return {
-              ...c,
-              user: com || null,
-              user_id: undefined, 
-            };
-          })
-        );
+        if (p.comments && Array.isArray(p.comments) && p.comments.length > 0) {
+          p.comments = await Promise.all(
+            p.comments.map(async (c) => {
+              const com = await User.findById(c.user_id, "_id first_name last_name");
+              return {
+                ...c,
+                user: com || null,
+                user_id: undefined, 
+              };
+            })
+          );
+        } else {
+          p.comments = p.comments || [];
+        }
       })
     );
 
