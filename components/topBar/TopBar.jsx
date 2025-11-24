@@ -152,7 +152,7 @@ class TopBar extends React.Component {
       <>
         <AppBar className="topbar-appBar" position="absolute">
           <Toolbar>
-              <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>Todd Dobbs</Typography>
+              <Typography variant="h5" component="div" sx={{ flexGrow: 1 }}>Brown University</Typography>
               <Typography variant="h5" component="div" sx={{ flexGrow: 1 }} color="inherit">{this.props.main_content}</Typography>
               
               {this.state.loggedInUser ? (
