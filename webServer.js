@@ -479,6 +479,59 @@ app.post("/photos/new", requireLogin, async (request, response) => {
   });
 });
 
+// DELETE /photos/:photo_id - delete a photo by its owner
+app.delete("/photos/:photo_id", requireLogin, async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.photo_id);
+    if (!photo) return res.status(404).send({ error: "Photo not found" });
+
+    // Only allow the owner to delete
+    if (photo.user_id.toString() !== req.session.user_id) {
+      return res.status(403).send({ error: "Unauthorized: Not photo owner" });
+    }
+
+    // Delete the file from disk
+    fs.unlink(`./images/${photo.file_name}`, (err) => {
+      if (err) console.error("Error deleting file:", err);
+    });
+
+    // Remove from database
+    await Photo.deleteOne({ _id: photo._id });
+
+    return res.status(200).send({ message: "Photo deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting photo:", err);
+    return res.status(500).send({ error: "Failed to delete photo" });
+  }
+});
+
+// DELETE /comments/:photo_id/:comment_id - delete a comment
+app.delete("/comments/:photo_id/:comment_id", requireLogin, async (req, res) => {
+  try {
+    const { photo_id, comment_id } = req.params;
+    const photo = await Photo.findById(photo_id);
+    if (!photo) return res.status(404).send({ error: "Photo not found" });
+
+    const comment = photo.comments.id(comment_id);
+    if (!comment) return res.status(404).send({ error: "Comment not found" });
+
+    // Only the comment author or photo owner can delete
+    if (
+      comment.user_id.toString() !== req.session.user_id &&
+      photo.user_id.toString() !== req.session.user_id
+    ) {
+      return res.status(403).send({ error: "Unauthorized: Cannot delete this comment" });
+    }
+
+    comment.remove(); // Mongoose subdocument remove
+    await photo.save();
+
+    return res.status(200).send({ message: "Comment deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting comment:", err);
+    return res.status(500).send({ error: "Failed to delete comment" });
+  }
+});
 
 
 const server = app.listen(3000, function () {

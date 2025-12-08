@@ -30,16 +30,15 @@ class PhotoShare extends React.Component {
   }
 
   checkLoginStatus = () => {
-    // Try to get current user info - if session exists, this will work
-    // We'll check by trying to access a protected endpoint
-    axios.get('/user/list')
-      .then(() => {
-        // If we get here, user is logged in, but we need to get user info
-        // For now, we'll check on first route access
-        // The login will set the state
+    axios.get('/admin/current')
+      .then((res) => {
+        if (res.data.loggedIn) {
+          this.setState({ loggedInUser: res.data });
+        } else {
+          this.setState({ loggedInUser: null });
+        }
       })
       .catch(() => {
-        // Not logged in - that's fine, LoginRegister will handle it
         this.setState({ loggedInUser: null });
       });
   };
@@ -105,7 +104,7 @@ class PhotoShare extends React.Component {
               <Route path="/photos/:userId"
                 render={props => (
                   this.state.loggedInUser ? (
-                    <UserPhotos {...props} />
+                    <UserPhotos {...props} currentUser={this.state.loggedInUser} />
                   ) : (
                     <Redirect to="/login-register" />
                   )

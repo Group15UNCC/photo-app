@@ -13,9 +13,6 @@ import {
 import axios from 'axios';
 import './userPhotos.css';
 
-/**
- * Define UserPhotos, a React component of project #5
- */
 class UserPhotos extends React.Component {
   constructor(props) {
     super(props);
@@ -23,9 +20,11 @@ class UserPhotos extends React.Component {
       photos: null,
       loading: true,
       error: null,
-      commentTexts: {}, // Track comment input for each photo
-      submittingComment: {}, // Track which photo is submitting
-      commentError: {} // Track errors for each photo
+      commentTexts: {}, 
+      submittingComment: {}, 
+      commentError: {},
+      deletingPhoto: {},
+      deletingComment: {}
     };
   }
 
@@ -34,7 +33,6 @@ class UserPhotos extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    // If userId changes (navigating between users), refetch
     if (prevProps.match.params.userId !== this.props.match.params.userId) {
       this.loadUserPhotos();
     }
@@ -77,8 +75,7 @@ class UserPhotos extends React.Component {
 
   handleAddComment = (photoId) => {
     const commentText = this.state.commentTexts[photoId] || '';
-    
-    // Validate comment is not empty
+
     if (!commentText.trim()) {
       this.setState(prevState => ({
         commentError: {
@@ -89,24 +86,17 @@ class UserPhotos extends React.Component {
       return;
     }
 
-    // Set submitting state
     this.setState(prevState => ({
       submittingComment: {
         ...prevState.submittingComment,
         [photoId]: true
-      },
-      commentError: {
-        ...prevState.commentError,
-        [photoId]: null
       }
     }));
 
-    // POST comment to server
     axios.post(`/commentsOfPhoto/${photoId}`, {
       comment: commentText
     })
       .then(() => {
-        // Clear comment input and reload photos
         this.setState(prevState => ({
           commentTexts: {
             ...prevState.commentTexts,
@@ -117,13 +107,13 @@ class UserPhotos extends React.Component {
             [photoId]: false
           }
         }));
-        // Reload photos to show new comment
         this.loadUserPhotos();
       })
       .catch((err) => {
         const errorMessage = err.response
-          ? err.response.data?.error || `Failed to add comment: ${err.response.statusText || err.response.status}`
+          ? err.response.data?.error || `Failed to add comment`
           : `Failed to add comment: ${err.message}`;
+
         this.setState(prevState => ({
           commentError: {
             ...prevState.commentError,
@@ -137,9 +127,69 @@ class UserPhotos extends React.Component {
       });
   };
 
+  handleDeletePhoto = (photoId) => {
+    if (!window.confirm('Are you sure you want to delete this photo?')) {
+      return;
+    }
+
+    this.setState(prevState => ({
+      deletingPhoto: {
+        ...prevState.deletingPhoto,
+        [photoId]: true
+      }
+    }));
+
+    axios.delete(`/photos/${photoId}`)
+      .then(() => {
+        this.loadUserPhotos();
+      })
+      .catch(err => {
+        alert("Failed to delete photo");
+      })
+      .finally(() => {
+        this.setState(prevState => ({
+          deletingPhoto: {
+            ...prevState.deletingPhoto,
+            [photoId]: false
+          }
+        }));
+      });
+  };
+
+  handleDeleteComment = (photoId, commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return;
+    }
+
+    this.setState(prevState => ({
+      deletingComment: {
+        ...prevState.deletingComment,
+        [commentId]: true
+      }
+    }));
+
+    // Fix: Use the correct endpoint that matches the backend
+    axios.delete(`/comments/${photoId}/${commentId}`)
+      .then(() => {
+        this.loadUserPhotos();
+      })
+      .catch(err => {
+        alert("Failed to delete comment");
+      })
+      .finally(() => {
+        this.setState(prevState => ({
+          deletingComment: {
+            ...prevState.deletingComment,
+            [commentId]: false
+          }
+        }));
+      });
+  };
+
   render() {
     const { photos, loading, error } = this.state;
     const userId = this.props.match.params.userId;
+    const currentUser = this.props.currentUser;
 
     if (loading) {
       return (
@@ -153,19 +203,11 @@ class UserPhotos extends React.Component {
     }
 
     if (error) {
-      return (
-        <Typography color="error" variant="body1">
-          {error}
-        </Typography>
-      );
+      return <Typography color="error">{error}</Typography>;
     }
 
     if (!photos || photos.length === 0) {
-      return (
-        <Typography variant="body1">
-          No photos found for user {userId}.
-        </Typography>
-      );
+      return <Typography>No photos found for user {userId}.</Typography>;
     }
 
     return (
@@ -175,7 +217,7 @@ class UserPhotos extends React.Component {
         </Typography>
 
         {photos.map((photo) => (
-          <Card key={photo._id} className="userPhotos-card">
+          <Card key={photo._id} className="userPhotos-card">          
             {photo.file_name && (
               <CardMedia
                 component="img"
@@ -184,67 +226,100 @@ class UserPhotos extends React.Component {
                 className="userPhotos-image"
               />
             )}
+            {currentUser && currentUser._id === photo.user_id && (
+              <Button
+                color="error"
+                variant="contained"
+                size="small"
+                sx={{ mt: 1 }}
+                onClick={() => this.handleDeletePhoto(photo._id)}
+                disabled={this.state.deletingPhoto[photo._id]}
+              >
+                {this.state.deletingPhoto[photo._id] ? "Deleting..." : "Delete Photo"}
+              </Button>
+            )}
+
             <CardContent>
               <Typography variant="body2" color="textSecondary">
                 Uploaded on: {new Date(photo.date_time).toLocaleString()}
               </Typography>
 
-              {/* Render comments if available */}
-              {photo.comments && photo.comments.length > 0 && (
+              {photo.comments.length > 0 && (
                 <div className="photo-comments">
                   <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
                     Comments:
                   </Typography>
-                  {photo.comments.map((comment) => (
-                    <div key={comment._id} className="comment-item">
-                      <Typography variant="body2" color="textSecondary" sx={{ fontSize: '0.75rem' }}>
-                        {new Date(comment.date_time).toLocaleString()}
-                      </Typography>
-                      <Typography variant="body2" sx={{ mt: 0.5 }}>
-                        {comment.user ? (
-                          <>
-                            <a 
-                              href={`#/users/${comment.user._id}`}
-                              style={{ textDecoration: 'none', color: 'primary.main' }}
-                            >
-                              {comment.user.first_name} {comment.user.last_name}
-                            </a>: {comment.comment}
-                          </>
-                        ) : (
-                          <span>Unknown User: {comment.comment}</span>
+
+                  {photo.comments.map((comment) => {
+                    const canDeleteComment =
+                      currentUser &&
+                      (currentUser._id === comment.user._id ||
+                        currentUser._id === photo.user_id);
+
+                    return (
+                      <div key={comment._id} className="comment-item">
+                        <Typography variant="body2" sx={{ fontSize: '0.75rem' }}>
+                          {new Date(comment.date_time).toLocaleString()}
+                        </Typography>
+
+                        <Typography variant="body2" sx={{ mt: 0.5 }}>
+                          {comment.user ? (
+                            <>
+                              <a 
+                                href={`#/users/${comment.user._id}`}
+                                style={{ textDecoration: 'none' }}
+                              >
+                                {comment.user.first_name} {comment.user.last_name}
+                              </a>
+                              : {comment.comment}
+                            </>
+                          ) : (
+                            <span>Unknown User: {comment.comment}</span>
+                          )}
+                        </Typography>
+
+                        {canDeleteComment && (
+                          <Button
+                            variant="outlined"
+                            size="small"
+                            color="error"
+                            sx={{ mt: 1 }}
+                            onClick={() => this.handleDeleteComment(photo._id, comment._id)}
+                            disabled={this.state.deletingComment[comment._id]}
+                          >
+                            {this.state.deletingComment[comment._id] ? "Deleting..." : "DELETE"}
+                          </Button>
                         )}
-                      </Typography>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Add Comment Section */}
               <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #e0e0e0' }}>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  Add a Comment:
-                </Typography>
+                <Typography variant="subtitle2">Add a Comment:</Typography>
+
                 {this.state.commentError[photo._id] && (
                   <Alert severity="error" sx={{ mb: 1 }}>
                     {this.state.commentError[photo._id]}
                   </Alert>
                 )}
+
                 <TextField
                   fullWidth
                   multiline
                   rows={3}
-                  placeholder="Write a comment..."
                   value={this.state.commentTexts[photo._id] || ''}
                   onChange={(e) => this.handleCommentChange(photo._id, e.target.value)}
-                  disabled={this.state.submittingComment[photo._id]}
-                  sx={{ mb: 1 }}
                 />
+
                 <Button
                   variant="contained"
+                  sx={{ mt: 1 }}
                   onClick={() => this.handleAddComment(photo._id)}
-                  disabled={this.state.submittingComment[photo._id] || !this.state.commentTexts[photo._id]?.trim()}
+                  disabled={!this.state.commentTexts[photo._id]?.trim()}
                 >
-                  {this.state.submittingComment[photo._id] ? 'Posting...' : 'Post Comment'}
+                  Post Comment
                 </Button>
               </Box>
             </CardContent>
