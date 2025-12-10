@@ -1,0 +1,33 @@
+Final Project - Submission Form
+
+Story number and name: 5 – Deleting Comments, Photos, and Users
+Story points: 4
+Brief description to see the story in action:
+Log in as any user. 
+Open one of your own photos and click the Delete Photo button to remove it. 
+Open a photo where you have posted a comment, and click the Delete Comment option next to your comment to remove it.
+Go to your User Profile and click the Delete Account button. A confirmation dialog will appear. After confirming, the account will be permanently deleted along with all of the user’s photos, comments, and associated data. You will be automatically logged out.
+
+Story number and name: 15 – Bug: First Login Attempt Always Fails
+Story points: 1
+Brief description to see the story in action:
+Previously, the first login attempt would always fail and require a second attempt. This bug is now fixed. 
+Log in normally — the first login attempt now succeeds as expected.
+
+Story number and name: 16 – Bug: Link in Comments Doesn’t Work
+Story points: 1
+Brief description to see the story in action:
+Comments containing links (e.g., “https://example.com”) now display as clickable hyperlinks. 
+Open any photo with a comment containing a URL and click the link to verify that it works.
+
+Story number and name: 17 – Bug: Browser Refresh Logs User Out
+Story points: 1
+Brief description to see the story in action:
+Refreshing the browser previously caused the user session to be lost. This has been fixed. 
+Log in, then refresh the page — the session persists, and you remain logged in.
+
+Total Story Points: 7
+
+Any special instructions for grading (it should be easy for someone to run your app from a new machine):
+None. The application installs with “npm install”, loads cleanly using “node loadDatabase.js”, and runs using “node webServer.js” with no additional setup required. 
+May need to use "npm run build" to load frontend items in some cases.
