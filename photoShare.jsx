@@ -66,7 +66,7 @@ class PhotoShare extends React.Component {
         {this.state.loggedInUser && (
           <Grid item sm={3}>
             <Paper className="main-grid-item">
-              <UserList />
+              <UserList loggedInUser={this.state.loggedInUser} />
             </Paper>
           </Grid>
         )}
@@ -129,7 +129,6 @@ class PhotoShare extends React.Component {
     );
   }
 }
-
 
 ReactDOM.render(
   <PhotoShare />,

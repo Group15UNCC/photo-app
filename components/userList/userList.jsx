@@ -6,6 +6,7 @@ import {
   ListItem,
   ListItemText,
   Typography,
+  Button
 } from '@mui/material';
 import axios from 'axios';
 import './userList.css';
@@ -21,6 +22,10 @@ class UserList extends React.Component {
   }
 
   componentDidMount() {
+    this.loadUsers();
+  }
+
+  loadUsers = () => {
     axios
       .get('/user/list')
       .then((response) => {
@@ -33,10 +38,27 @@ class UserList extends React.Component {
           loading: false,
         });
       });
-  }
+  };
+
+  handleDeleteUser = (id) => {
+    if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) {
+      return;
+    }
+
+    axios.delete(`/user/${id}`)
+      .then(() => {
+        // Force logout since user deleted themselves
+        window.location.hash = "#/login-register";
+        window.location.reload();
+      })
+      .catch(err => {
+        alert(err.response?.data?.error || "Failed to delete user");
+      });
+  };
 
   render() {
     const { users, loading, error } = this.state;
+    const loggedInUser = this.props.loggedInUser;
 
     if (loading) {
       return <Typography variant="body1">Loading users...</Typography>;
@@ -56,10 +78,22 @@ class UserList extends React.Component {
           {users.map((user, index) => (
             <React.Fragment key={user._id}>
               <ListItem
+                className="user-list-item"
+                secondaryAction={
+                  loggedInUser && loggedInUser._id === user._id ? (
+                    <Button
+                      color="error"
+                      size="small"
+                      sx={{ mt: 1 }}
+                      onClick={() => this.handleDeleteUser(user._id)}
+                    >
+                      Delete
+                    </Button>
+                  ) : null
+                }
                 button
                 component={Link}
                 to={`/users/${user._id}`}
-                className="user-list-item"
               >
                 <ListItemText
                   primary={`${user.first_name} ${user.last_name}`}

@@ -533,6 +533,49 @@ app.delete("/comments/:photo_id/:comment_id", requireLogin, async (req, res) => 
   }
 });
 
+app.delete("/user/:id", requireLogin, async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // Only allow a user to delete themselves (or admin logic if you add admins)
+    if (req.session.user_id !== userId) {
+      return res.status(403).send({ error: "Unauthorized - can only delete your own account" });
+    }
+
+    // Delete all photos by this user
+    const photos = await Photo.find({ user_id: userId });
+
+    for (const p of photos) {
+      // Delete file from disk
+      try {
+        fs.unlinkSync(`./images/${p.file_name}`);
+      } catch (err) {
+        console.error("Error deleting image file:", err);
+      }
+    }
+
+    await Photo.deleteMany({ user_id: userId });
+
+    // Remove this user's comments from all photos
+    await Photo.updateMany(
+      {},
+      { $pull: { comments: { user_id: userId } } }
+    );
+
+    // Delete the user
+    await User.deleteOne({ _id: userId });
+
+    // Destroy the session
+    req.session.destroy(() => {});
+
+    return res.status(200).send({ message: "User deleted successfully" });
+
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    return res.status(500).send({ error: "Failed to delete user" });
+  }
+});
+
 
 const server = app.listen(3000, function () {
   const port = server.address().port;
