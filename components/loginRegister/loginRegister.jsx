@@ -75,12 +75,15 @@ class LoginRegister extends React.Component {
       .then((response) => {
         // Login successful - user info is in response.data
         const user = response.data;
+        this.setState({ loading: false });
         // Notify parent component about successful login
         if (this.props.onLoginSuccess) {
           this.props.onLoginSuccess(user);
         }
-        // Navigate to user's detail page
-        window.location.hash = `#/users/${user._id}`;
+        // Navigate to user's detail page after state update
+        setTimeout(() => {
+          window.location.hash = `#/users/${user._id}`;
+        }, 0);
       })
       .catch((err) => {
         const errorMessage = err.response
