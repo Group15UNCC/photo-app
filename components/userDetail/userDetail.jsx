@@ -50,10 +50,10 @@ class UserDetail extends React.Component {
 
     render() {
         return this.state.user ? (
-            <div>
+            <div className="user-detail-container">
                 <Box component="form" noValidate autoComplete="off">
                     <div>
-                        <Button variant="contained" component="a" href={"#/photos/" + this.state.user._id}>
+                        <Button className="user-detail-button" variant="contained" component="a" href={"#/photos/" + this.state.user._id}>
                             User Photos
                         </Button>
                     </div>

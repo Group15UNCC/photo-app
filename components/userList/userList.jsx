@@ -40,18 +40,20 @@ class UserList extends React.Component {
       });
   };
 
+  // eslint-disable-next-line class-methods-use-this
   handleDeleteUser = (id) => {
+    // eslint-disable-next-line no-alert
     if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) {
       return;
     }
 
     axios.delete(`/user/${id}`)
       .then(() => {
-        // Force logout since user deleted themselves
         window.location.hash = "#/login-register";
         window.location.reload();
       })
-      .catch(err => {
+      .catch((err) => {
+        // eslint-disable-next-line no-alert
         alert(err.response?.data?.error || "Failed to delete user");
       });
   };

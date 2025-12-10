@@ -185,7 +185,7 @@ class TopBar extends React.Component {
           </Toolbar>
         </AppBar>
 
-        <Dialog open={this.state.uploadDialogOpen} onClose={this.handleCloseUploadDialog}>
+        <Dialog className="topbar-dialog" open={this.state.uploadDialogOpen} onClose={this.handleCloseUploadDialog}>
           <DialogTitle>Upload a New Photo</DialogTitle>
           <DialogContent>
             <Box sx={{ minWidth: 400, pt: 1 }}>

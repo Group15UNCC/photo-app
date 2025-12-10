@@ -32,14 +32,14 @@ class PhotoShare extends React.Component {
   checkLoginStatus = () => {
     axios.get('/admin/current')
       .then((res) => {
-        if (res.data.loggedIn) {
-          this.setState({ loggedInUser: res.data });
+        if (res.data && res.data.loggedIn && res.data.user) {
+          this.setState({ loggedInUser: res.data.user, checkingLogin: false });
         } else {
-          this.setState({ loggedInUser: null });
+          this.setState({ loggedInUser: null, checkingLogin: false });
         }
       })
       .catch(() => {
-        this.setState({ loggedInUser: null });
+        this.setState({ loggedInUser: null, checkingLogin: false });
       });
   };
 
@@ -62,14 +62,12 @@ class PhotoShare extends React.Component {
     return (
       <HashRouter>
         <div>
+          <TopBar
+            loggedInUser={this.state.loggedInUser}
+            onLogout={this.handleLogout}
+          />
+          <div className="main-topbar-buffer" />
           <Grid container spacing={8}>
-            <Grid item xs={12}>
-              <TopBar
-                loggedInUser={this.state.loggedInUser}
-                onLogout={this.handleLogout}
-              />
-            </Grid>
-            <div className="main-topbar-buffer" />
             {this.state.loggedInUser && (
               <Grid item sm={3}>
                 <Paper className="main-grid-item">

@@ -204,9 +204,8 @@ class LoginRegister extends React.Component {
 
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', minHeight: '400px', pt: 4 }}>
-        <Paper sx={{ p: 4, maxWidth: 500, width: '100%' }}>
-          {/* Login Section */}
-          <Typography variant="h5" gutterBottom>
+        <Paper className="login-register-paper" sx={{ p: 4, maxWidth: 500, width: '100%' }}>
+          <Typography className="login-register-title" variant="h5" gutterBottom>
             Login
           </Typography>
           
@@ -239,6 +238,7 @@ class LoginRegister extends React.Component {
             />
             
             <Button
+              className="login-register-button"
               type="submit"
               variant="contained"
               fullWidth
@@ -250,8 +250,7 @@ class LoginRegister extends React.Component {
           </Box>
 
           <Box sx={{ mt: 4, pt: 4, borderTop: '1px solid #e0e0e0' }}>
-            {/* Registration Section */}
-            <Typography variant="h5" gutterBottom>
+            <Typography className="login-register-title" variant="h5" gutterBottom>
               Register New User
             </Typography>
 
@@ -351,6 +350,7 @@ class LoginRegister extends React.Component {
               />
               
               <Button
+                className="login-register-button"
                 type="submit"
                 variant="contained"
                 fullWidth

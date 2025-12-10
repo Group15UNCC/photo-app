@@ -1,0 +1,109 @@
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.user-detail-container {
+  max-width: 650px;
+  margin: 0 auto;
+  padding: 40px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-radius: 24px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.12),
+    0 8px 25px rgba(102, 126, 234, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  position: relative;
+  overflow: hidden;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+.user-detail-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #667eea, #764ba2, #f093fb, #4facfe);
+  background-size: 200% 100%;
+  animation: shimmer 3s linear infinite;
+}
+
+.user-detail-button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 14px 40px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  text-transform: none;
+  box-shadow: 
+    0 8px 25px rgba(102, 126, 234, 0.4),
+    0 4px 12px rgba(118, 75, 162, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 32px;
+  position: relative;
+  overflow: hidden;
+}
+
+.user-detail-button::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.user-detail-button:hover::after {
+  width: 400px;
+  height: 400px;
+}
+
+.user-detail-button:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 
+    0 12px 35px rgba(102, 126, 234, 0.5),
+    0 6px 18px rgba(118, 75, 162, 0.4);
+}
+
+.user-detail-container .MuiTextField-root {
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+
+.user-detail-container .MuiTextField-root .MuiOutlinedInput-root {
+  border-radius: 12px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  background: rgba(255, 255, 255, 0.9);
+  border-width: 2px;
+}
+
+.user-detail-container .MuiTextField-root .MuiOutlinedInput-root:hover {
+  box-shadow: 
+    0 4px 15px rgba(102, 126, 234, 0.15),
+    0 2px 8px rgba(118, 75, 162, 0.1);
+  border-color: rgba(102, 126, 234, 0.4);
+  background: rgba(255, 255, 255, 1);
+}
+
+.user-detail-container .MuiTextField-root .MuiOutlinedInput-root.Mui-focused {
+  box-shadow: 
+    0 6px 20px rgba(102, 126, 234, 0.25),
+    0 3px 10px rgba(118, 75, 162, 0.15);
+  border-color: #667eea;
+  background: rgba(255, 255, 255, 1);
+}

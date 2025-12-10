@@ -18,6 +18,7 @@ class UserPhotos extends React.Component {
     super(props);
     this.state = {
       photos: null,
+      user: null,
       loading: true,
       error: null,
       commentTexts: {}, 
@@ -38,14 +39,21 @@ class UserPhotos extends React.Component {
     }
   }
 
-  loadUserPhotos() {
+  loadUserPhotos(showLoading = true) {
     const userId = this.props.match.params.userId;
-    this.setState({ loading: true, error: null });
+    this.setState({ 
+      loading: showLoading, 
+      error: null 
+    });
 
-    axios.get(`/photosOfUser/${userId}`)
-      .then((response) => {
+    Promise.all([
+      axios.get(`/photosOfUser/${userId}`),
+      axios.get(`/user/${userId}`)
+    ])
+      .then(([photosResponse, userResponse]) => {
         this.setState({
-          photos: response.data,
+          photos: photosResponse.data,
+          user: userResponse.data,
           loading: false
         });
       })
@@ -105,9 +113,13 @@ class UserPhotos extends React.Component {
           submittingComment: {
             ...prevState.submittingComment,
             [photoId]: false
+          },
+          commentError: {
+            ...prevState.commentError,
+            [photoId]: null
           }
         }));
-        this.loadUserPhotos();
+        this.loadUserPhotos(false);
       })
       .catch((err) => {
         const errorMessage = err.response
@@ -128,6 +140,7 @@ class UserPhotos extends React.Component {
   };
 
   handleDeletePhoto = (photoId) => {
+    // eslint-disable-next-line no-alert
     if (!window.confirm('Are you sure you want to delete this photo?')) {
       return;
     }
@@ -141,9 +154,10 @@ class UserPhotos extends React.Component {
 
     axios.delete(`/photos/${photoId}`)
       .then(() => {
-        this.loadUserPhotos();
+        this.loadUserPhotos(false);
       })
-      .catch(err => {
+      .catch(() => {
+        // eslint-disable-next-line no-alert
         alert("Failed to delete photo");
       })
       .finally(() => {
@@ -157,6 +171,7 @@ class UserPhotos extends React.Component {
   };
 
   handleDeleteComment = (photoId, commentId) => {
+    // eslint-disable-next-line no-alert
     if (!window.confirm('Are you sure you want to delete this comment?')) {
       return;
     }
@@ -168,12 +183,12 @@ class UserPhotos extends React.Component {
       }
     }));
 
-    // Fix: Use the correct endpoint that matches the backend
     axios.delete(`/comments/${photoId}/${commentId}`)
       .then(() => {
-        this.loadUserPhotos();
+        this.loadUserPhotos(false);
       })
-      .catch(err => {
+      .catch(() => {
+        // eslint-disable-next-line no-alert
         alert("Failed to delete comment");
       })
       .finally(() => {
@@ -186,32 +201,28 @@ class UserPhotos extends React.Component {
       });
   };
 
-  // Helper function to convert URLs in text to clickable links
+  // eslint-disable-next-line class-methods-use-this
   renderTextWithLinks = (text) => {
     if (!text) return text;
     
-    // URL regex pattern - matches http://, https://, www., and common TLDs
     const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/g;
     const parts = [];
     let lastIndex = 0;
-    let match;
+    let match = urlRegex.exec(text);
 
-    while ((match = urlRegex.exec(text)) !== null) {
-      // Add text before the URL
+    // eslint-disable-next-line no-cond-assign
+    while (match !== null) {
       if (match.index > lastIndex) {
         parts.push(text.substring(lastIndex, match.index));
       }
 
-      // Process the URL
       let url = match[0];
       let href = url;
 
-      // Add protocol if missing
       if (!url.startsWith('http://') && !url.startsWith('https://')) {
         href = 'https://' + url;
       }
 
-      // Create clickable link
       parts.push(
         <a
           key={match.index}
@@ -225,6 +236,7 @@ class UserPhotos extends React.Component {
       );
 
       lastIndex = match.index + match[0].length;
+      match = urlRegex.exec(text);
     }
 
     // Add remaining text after last URL
@@ -237,7 +249,7 @@ class UserPhotos extends React.Component {
   };
 
   render() {
-    const { photos, loading, error } = this.state;
+    const { photos, user, loading, error } = this.state;
     const userId = this.props.match.params.userId;
     const currentUser = this.props.currentUser;
 
@@ -246,7 +258,7 @@ class UserPhotos extends React.Component {
         <div className="userPhotos-container">
           <CircularProgress />
           <Typography variant="body1" sx={{ mt: 1 }}>
-            Loading photos for user {userId}...
+            Loading photos...
           </Typography>
         </div>
       );
@@ -257,13 +269,16 @@ class UserPhotos extends React.Component {
     }
 
     if (!photos || photos.length === 0) {
-      return <Typography>No photos found for user {userId}.</Typography>;
+      const userName = user ? `${user.first_name} ${user.last_name}` : userId;
+      return <Typography>No photos found for {userName}.</Typography>;
     }
+
+    const userName = user ? `${user.first_name} ${user.last_name}` : userId;
 
     return (
       <div className="userPhotos-container">
         <Typography variant="h6" gutterBottom>
-          Photos of User {userId}
+          Photos of {userName}
         </Typography>
 
         {photos.map((photo) => (
