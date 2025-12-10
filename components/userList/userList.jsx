@@ -6,7 +6,12 @@ import {
   ListItem,
   ListItemText,
   Typography,
-  Button
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
 } from '@mui/material';
 import axios from 'axios';
 import './userList.css';
@@ -18,6 +23,8 @@ class UserList extends React.Component {
       users: [],
       loading: true,
       error: null,
+      deleteDialogOpen: false,
+      userToDelete: null,
     };
   }
 
@@ -40,26 +47,33 @@ class UserList extends React.Component {
       });
   };
 
-  // eslint-disable-next-line class-methods-use-this
-  handleDeleteUser = (id) => {
-    // eslint-disable-next-line no-alert
-    if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) {
-      return;
-    }
+  handleDeleteClick = (user) => {
+    this.setState({ deleteDialogOpen: true, userToDelete: user });
+  };
 
-    axios.delete(`/user/${id}`)
+  handleCloseDialog = () => {
+    this.setState({ deleteDialogOpen: false, userToDelete: null });
+  };
+
+  confirmDeleteUser = () => {
+    const { userToDelete } = this.state;
+    if (!userToDelete) return;
+
+    axios
+      .delete(`/user/${userToDelete._id}`)
       .then(() => {
-        window.location.hash = "#/login-register";
+        window.location.hash = '#/login-register';
         window.location.reload();
       })
       .catch((err) => {
-        // eslint-disable-next-line no-alert
-        alert(err.response?.data?.error || "Failed to delete user");
+        console.error('Failed to delete user:', err);
+        this.setState({ error: err.response?.data?.error || 'Failed to delete user' });
+        this.handleCloseDialog();
       });
   };
 
   render() {
-    const { users, loading, error } = this.state;
+    const { users, loading, error, deleteDialogOpen } = this.state;
     const loggedInUser = this.props.loggedInUser;
 
     if (loading) {
@@ -86,8 +100,7 @@ class UserList extends React.Component {
                     <Button
                       color="error"
                       size="small"
-                      sx={{ mt: 1 }}
-                      onClick={() => this.handleDeleteUser(user._id)}
+                      onClick={() => this.handleDeleteClick(user)}
                     >
                       Delete
                     </Button>
@@ -97,14 +110,28 @@ class UserList extends React.Component {
                 component={Link}
                 to={`/users/${user._id}`}
               >
-                <ListItemText
-                  primary={`${user.first_name} ${user.last_name}`}
-                />
+                <ListItemText primary={`${user.first_name} ${user.last_name}`} />
               </ListItem>
               {index !== users.length - 1 && <Divider />}
             </React.Fragment>
           ))}
         </List>
+
+        {/* Confirmation Dialog */}
+        <Dialog open={deleteDialogOpen} onClose={this.handleCloseDialog}>
+          <DialogTitle>Confirm Deletion</DialogTitle>
+          <DialogContent>
+            <DialogContentText>
+              Are you sure you want to delete your account? This cannot be undone.
+            </DialogContentText>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={this.handleCloseDialog}>Cancel</Button>
+            <Button onClick={this.confirmDeleteUser} color="error">
+              Delete
+            </Button>
+          </DialogActions>
+        </Dialog>
       </div>
     );
   }
