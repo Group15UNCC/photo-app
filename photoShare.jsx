@@ -20,24 +20,25 @@ class PhotoShare extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      loggedInUser: null
+      loggedInUser: null,
+      checkingLogin: true
     };
   }
 
   componentDidMount() {
-    // Check if user is already logged in (session check)
     this.checkLoginStatus();
   }
 
   checkLoginStatus = () => {
-    // Check if user has an active session on page load/refresh
-    axios.get('/admin/session')
-      .then((response) => {
-        // Session exists, restore user state
-        this.setState({ loggedInUser: response.data });
+    axios.get('/admin/current')
+      .then((res) => {
+        if (res.data.loggedIn) {
+          this.setState({ loggedInUser: res.data });
+        } else {
+          this.setState({ loggedInUser: null });
+        }
       })
       .catch(() => {
-        // No active session - user needs to log in
         this.setState({ loggedInUser: null });
       });
   };
@@ -51,6 +52,13 @@ class PhotoShare extends React.Component {
   };
 
   render() {
+    if (this.state.checkingLogin) {
+      return (
+        <Typography variant="h6" sx={{ padding: 2 }}>
+          Checking login session...
+        </Typography>
+      );
+    }
     return (
       <HashRouter>
         <div>

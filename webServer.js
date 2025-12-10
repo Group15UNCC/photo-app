@@ -272,6 +272,28 @@ app.post("/admin/logout", requireLogin, async (request, response) => {
   return null;
 });
 
+app.get("/admin/current", async (req, res) => {
+  try {
+    if (!req.session || !req.session.user_id) {
+      return res.status(401).send({ loggedIn: false });
+    }
+
+    const user = await User.findById(req.session.user_id, "_id login_name first_name last_name");
+
+    if (!user) {
+      return res.status(401).send({ loggedIn: false });
+    }
+
+    return res.status(200).send({
+      loggedIn: true,
+      user
+    });
+  } catch (err) {
+    console.error("Error checking session:", err);
+    return res.status(500).send({ loggedIn: false });
+  }
+});
+
 /**
  * URL /user - Register a new user
  * POST request with JSON body: { login_name, password, first_name, last_name, location, description, occupation }
