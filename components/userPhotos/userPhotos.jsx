@@ -186,6 +186,56 @@ class UserPhotos extends React.Component {
       });
   };
 
+  // Helper function to convert URLs in text to clickable links
+  renderTextWithLinks = (text) => {
+    if (!text) return text;
+    
+    // URL regex pattern - matches http://, https://, www., and common TLDs
+    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}[^\s]*)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = urlRegex.exec(text)) !== null) {
+      // Add text before the URL
+      if (match.index > lastIndex) {
+        parts.push(text.substring(lastIndex, match.index));
+      }
+
+      // Process the URL
+      let url = match[0];
+      let href = url;
+
+      // Add protocol if missing
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        href = 'https://' + url;
+      }
+
+      // Create clickable link
+      parts.push(
+        <a
+          key={match.index}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: '#1976d2', textDecoration: 'underline' }}
+        >
+          {url}
+        </a>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text after last URL
+    if (lastIndex < text.length) {
+      parts.push(text.substring(lastIndex));
+    }
+
+    // If no URLs were found, return original text
+    return parts.length > 0 ? parts : text;
+  };
+
   render() {
     const { photos, loading, error } = this.state;
     const userId = this.props.match.params.userId;
@@ -271,10 +321,10 @@ class UserPhotos extends React.Component {
                               >
                                 {comment.user.first_name} {comment.user.last_name}
                               </a>
-                              : {comment.comment}
+                              : {this.renderTextWithLinks(comment.comment)}
                             </>
                           ) : (
-                            <span>Unknown User: {comment.comment}</span>
+                            <span>Unknown User: {this.renderTextWithLinks(comment.comment)}</span>
                           )}
                         </Typography>
 
