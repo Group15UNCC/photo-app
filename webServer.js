@@ -54,7 +54,7 @@ app.use(session({
 }));
 
 // Configure multer for file uploads
-const processFormBody = multer({storage: multer.memoryStorage()}).single('uploadedphoto');
+const processFormBody = multer({ storage: multer.memoryStorage() }).single('uploadedphoto');
 
 // Load the Mongoose schema for User, Photo, and SchemaInfo
 const User = require("./schema/user.js");
@@ -213,6 +213,41 @@ app.post("/admin/login", async (request, response) => {
 });
 
 /**
+ * URL /admin/session - Check if user has an active session
+ * GET request - returns logged in user info if session exists
+ */
+app.get("/admin/session", async (request, response) => {
+  try {
+    // Check if session exists and has user_id
+    if (!request.session || !request.session.user_id) {
+      return response.status(401).send({ error: "No active session" });
+    }
+
+    // Find user by session user_id
+    const user = await User.findById(request.session.user_id);
+    if (!user) {
+      // Session exists but user not found - destroy invalid session
+      request.session.destroy(() => { });
+      return response.status(401).send({ error: "Session invalid" });
+    }
+
+    // Return user information (excluding sensitive data)
+    return response.status(200).send({
+      _id: user._id,
+      login_name: user.login_name,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      location: user.location,
+      description: user.description,
+      occupation: user.occupation
+    });
+  } catch (error) {
+    console.error("Error checking session:", error);
+    return response.status(500).send({ error: "Failed to check session" });
+  }
+});
+
+/**
  * URL /admin/logout - Logout the current user
  * POST request with empty body
  */
@@ -300,13 +335,13 @@ app.post("/user", async (request, response) => {
  * Protected route - requires login
  */
 app.get("/user/list", requireLogin, async (request, response) => {
-  try{
+  try {
     const users = await User.find({}, '_id first_name last_name');
     return response.status(200).send(users);
   }
-  catch(error){
+  catch (error) {
     console.error("Error fetching user list:", error);
-    return response.status(500).send({ error: "Database error fetching user list"});
+    return response.status(500).send({ error: "Database error fetching user list" });
   }
 });
 
@@ -315,18 +350,18 @@ app.get("/user/list", requireLogin, async (request, response) => {
  * Protected route - requires login
  */
 app.get("/user/:id", requireLogin, async (request, response) => {
-  try{
+  try {
     const user = await User.findById(request.params.id, '_id first_name last_name location description occupation');
-    if (!user){
+    if (!user) {
       console.log("User with _id:", request.params.id, "not found.");
-      return response.status(400).send({error:"User not found"});
+      return response.status(400).send({ error: "User not found" });
     }
     return response.status(200).send(user);
-  } catch (error){
+  } catch (error) {
     console.error("Error fetching user:", error);
-    return response.status(400).send({ error: "Database error fetching user list"});
+    return response.status(400).send({ error: "Database error fetching user list" });
   }
-  
+
 });
 
 /**
@@ -354,7 +389,7 @@ app.get("/photosOfUser/:id", requireLogin, async (request, response) => {
               return {
                 ...c,
                 user: com || null,
-                user_id: undefined, 
+                user_id: undefined,
               };
             })
           );
@@ -459,15 +494,15 @@ app.post("/photos/new", requireLogin, async (request, response) => {
           });
 
           await newPhoto.save();
-          return response.status(200).send({ 
-            message: "Photo uploaded successfully", 
+          return response.status(200).send({
+            message: "Photo uploaded successfully",
             photo: newPhoto,
-            user_id: userId 
+            user_id: userId
           });
         } catch (dbError) {
           console.error("Error creating photo in database:", dbError);
           // Try to delete the file if database save failed
-          fs.unlink("./images/" + filename, () => {});
+          fs.unlink("./images/" + filename, () => { });
           return response.status(500).send({ error: "Failed to save photo to database" });
         }
       });
@@ -566,7 +601,7 @@ app.delete("/user/:id", requireLogin, async (req, res) => {
     await User.deleteOne({ _id: userId });
 
     // Destroy the session
-    req.session.destroy(() => {});
+    req.session.destroy(() => { });
 
     return res.status(200).send({ message: "User deleted successfully" });
 
@@ -581,8 +616,8 @@ const server = app.listen(3000, function () {
   const port = server.address().port;
   console.log(
     "Listening at http://localhost:" +
-      port +
-      " exporting the directory " +
-      __dirname
+    port +
+    " exporting the directory " +
+    __dirname
   );
 });

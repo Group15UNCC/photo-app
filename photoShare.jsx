@@ -30,15 +30,14 @@ class PhotoShare extends React.Component {
   }
 
   checkLoginStatus = () => {
-    axios.get('/admin/current')
-      .then((res) => {
-        if (res.data.loggedIn) {
-          this.setState({ loggedInUser: res.data });
-        } else {
-          this.setState({ loggedInUser: null });
-        }
+    // Check if user has an active session on page load/refresh
+    axios.get('/admin/session')
+      .then((response) => {
+        // Session exists, restore user state
+        this.setState({ loggedInUser: response.data });
       })
       .catch(() => {
+        // No active session - user needs to log in
         this.setState({ loggedInUser: null });
       });
   };
@@ -54,77 +53,77 @@ class PhotoShare extends React.Component {
   render() {
     return (
       <HashRouter>
-      <div>
-      <Grid container spacing={8}>
-        <Grid item xs={12}>
-          <TopBar 
-            loggedInUser={this.state.loggedInUser}
-            onLogout={this.handleLogout}
-          />
-        </Grid>
-        <div className="main-topbar-buffer"/>
-        {this.state.loggedInUser && (
-          <Grid item sm={3}>
-            <Paper className="main-grid-item">
-              <UserList loggedInUser={this.state.loggedInUser} />
-            </Paper>
-          </Grid>
-        )}
-        <Grid item sm={this.state.loggedInUser ? 9 : 12}>
-          <Paper className="main-grid-item">
-            <Switch>
-              <Route path="/login-register"
-                render={props => (
-                  <LoginRegister 
-                    {...props}
-                    onLoginSuccess={this.handleLoginSuccess}
+        <div>
+          <Grid container spacing={8}>
+            <Grid item xs={12}>
+              <TopBar
+                loggedInUser={this.state.loggedInUser}
+                onLogout={this.handleLogout}
+              />
+            </Grid>
+            <div className="main-topbar-buffer" />
+            {this.state.loggedInUser && (
+              <Grid item sm={3}>
+                <Paper className="main-grid-item">
+                  <UserList loggedInUser={this.state.loggedInUser} />
+                </Paper>
+              </Grid>
+            )}
+            <Grid item sm={this.state.loggedInUser ? 9 : 12}>
+              <Paper className="main-grid-item">
+                <Switch>
+                  <Route path="/login-register"
+                    render={props => (
+                      <LoginRegister
+                        {...props}
+                        onLoginSuccess={this.handleLoginSuccess}
+                      />
+                    )}
                   />
-                )}
-              />
-              <Route exact path="/"
-                render={() => (
-                  this.state.loggedInUser ? (
-                    <Typography variant="body1">
-                      Welcome to your photosharing app!
-                    </Typography>
-                  ) : (
-                    <Redirect to="/login-register" />
-                  )
-                )}
-              />
-              <Route path="/users/:userId"
-                render={props => (
-                  this.state.loggedInUser ? (
-                    <UserDetail {...props} />
-                  ) : (
-                    <Redirect to="/login-register" />
-                  )
-                )}
-              />
-              <Route path="/photos/:userId"
-                render={props => (
-                  this.state.loggedInUser ? (
-                    <UserPhotos {...props} currentUser={this.state.loggedInUser} />
-                  ) : (
-                    <Redirect to="/login-register" />
-                  )
-                )}
-              />
-              <Route path="/users"
-                render={props => (
-                  this.state.loggedInUser ? (
-                    <UserList {...props} />
-                  ) : (
-                    <Redirect to="/login-register" />
-                  )
-                )}
-              />
-              <Route render={() => <Redirect to="/login-register" />} />
-            </Switch>
-          </Paper>
-        </Grid>
-      </Grid>
-      </div>
+                  <Route exact path="/"
+                    render={() => (
+                      this.state.loggedInUser ? (
+                        <Typography variant="body1">
+                          Welcome to your photosharing app!
+                        </Typography>
+                      ) : (
+                        <Redirect to="/login-register" />
+                      )
+                    )}
+                  />
+                  <Route path="/users/:userId"
+                    render={props => (
+                      this.state.loggedInUser ? (
+                        <UserDetail {...props} />
+                      ) : (
+                        <Redirect to="/login-register" />
+                      )
+                    )}
+                  />
+                  <Route path="/photos/:userId"
+                    render={props => (
+                      this.state.loggedInUser ? (
+                        <UserPhotos {...props} currentUser={this.state.loggedInUser} />
+                      ) : (
+                        <Redirect to="/login-register" />
+                      )
+                    )}
+                  />
+                  <Route path="/users"
+                    render={props => (
+                      this.state.loggedInUser ? (
+                        <UserList {...props} />
+                      ) : (
+                        <Redirect to="/login-register" />
+                      )
+                    )}
+                  />
+                  <Route render={() => <Redirect to="/login-register" />} />
+                </Switch>
+              </Paper>
+            </Grid>
+          </Grid>
+        </div>
       </HashRouter>
     );
   }
